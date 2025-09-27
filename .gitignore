@@ -1,0 +1,19 @@
+# ROS2 build artifacts
+build/
+install/
+log/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# VSCode settings
+.vscode/
+*.code-workspace
+
+# CMake / Colcon extras
+CMakeLists.txt.user
+compile_commands.json
+colcon_cd.sh
