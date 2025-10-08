@@ -1,4 +1,4 @@
-//ROS2 rclcpp의 핵심 API. 노드 정의/생성, 퍼블리셔/서브스크립션, 로그 등
+// src/udp_parsers_cpp/src/ego_status_parser.cpp
 #include <rclcpp/rclcpp.hpp>
 
 // std/utility
@@ -26,7 +26,7 @@ public:
       std::bind(&EgoStatusParser::onRaw, this, _1));
     
     // pub
-    tb_pub_   = create_publisher<bridge_msgs::msg::TurtlebotStatus>("/robot/ego_status", 10); // 상태 퍼블리셔.
+    tb_pub_   = create_publisher<bridge_msgs::msg::TurtlebotStatus>("/ego_status", 10); // 상태 퍼블리셔.
   }
 
   // 콜백: RAW → 파싱
