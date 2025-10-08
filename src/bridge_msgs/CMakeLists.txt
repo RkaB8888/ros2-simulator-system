@@ -1,3 +1,4 @@
+# src/bridge_msgs/CMakeLists.txt
 cmake_minimum_required(VERSION 3.8)
 project(bridge_msgs)
 
@@ -14,6 +15,9 @@ find_package(geometry_msgs REQUIRED)
 # 2) msg -> 언어별 헤더/모듈 자동 생성
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/TurtlebotStatus.msg"
+  "msg/EnviromentStatus.msg"
+  "msg/IotStatus.msg"
+  "msg/CustomObjectInfo.msg"
   DEPENDENCIES std_msgs geometry_msgs
 )
 

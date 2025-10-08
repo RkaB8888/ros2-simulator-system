@@ -1,25 +1,31 @@
+<!-- src/bridge_msgs/package.xml -->
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>bridge_msgs</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
+  <description>C
+    Custom ROS2 message definitions for simulator–ROS2 bridge.
+    Defines unified message types (Ego, Env, IoT, Object) shared across all parser nodes.
+  </description>
   <maintainer email="j1113019@naver.com">j1113019</maintainer>
-  <license>TODO: License declaration</license>
+  <license>MIT</license>
 
-  <!-- 빌드 툴 -->
+  <!-- Build tool -->
   <buildtool_depend>ament_cmake</buildtool_depend>
 
-  <!-- 메시지에서 참조하는 의존 패키지 -->
+  <!-- Message dependencies -->
   <depend>std_msgs</depend>
   <depend>geometry_msgs</depend>
 
-  <!-- 메시지 패키지에 꼭 필요한 추가 의존 -->
+  <!-- ROSIDL message generation -->
   <build_depend>rosidl_default_generators</build_depend>
   <exec_depend>rosidl_default_runtime</exec_depend>
+
+  <!-- 메시지 패키지 그룹 등록 -->
   <member_of_group>rosidl_interface_packages</member_of_group>
   
-  <!-- 테스트용 (원래 있던 내용 유지) -->
+  <!-- Test tools -->
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
 
