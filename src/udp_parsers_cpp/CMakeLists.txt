@@ -12,6 +12,7 @@ find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(bridge_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
 
 # executables
 add_executable(ego_status_parser src/ego_status_parser.cpp)
@@ -25,7 +26,11 @@ ament_target_dependencies(iot_status_parser rclcpp std_msgs bridge_msgs)
 
 add_executable(custom_object_parser src/custom_object_parser.cpp)
 ament_target_dependencies(custom_object_parser rclcpp std_msgs geometry_msgs bridge_msgs)
-install(TARGETS ego_status_parser env_status_parser iot_status_parser custom_object_parser DESTINATION lib/${PROJECT_NAME})
+
+add_executable(imu_parser src/imu_parser.cpp)
+ament_target_dependencies(imu_parser rclcpp std_msgs sensor_msgs)
+
+install(TARGETS ego_status_parser env_status_parser iot_status_parser custom_object_parser imu_parser DESTINATION lib/${PROJECT_NAME})
 
 # tests
 if(BUILD_TESTING)
