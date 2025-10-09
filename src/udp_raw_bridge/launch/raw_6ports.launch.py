@@ -1,4 +1,4 @@
-# src/udp_raw_bridge/launch/raw_4ports.launch.py
+# src/udp_raw_bridge/launch/raw_6ports.launch.py
 from launch import LaunchDescription
 from launch_ros.actions import Node
 
@@ -17,4 +17,7 @@ def generate_launch_description():
         n(8002, 'iot_status_raw'),
         n(8202, 'ego_status_raw'),
         n(8302, 'object_info_raw'),
+        n(9092, 'imu_raw'),
+        n(1232, 'camera_jpeg_raw'),
+        n(9094, 'lidar_raw'),
     ])

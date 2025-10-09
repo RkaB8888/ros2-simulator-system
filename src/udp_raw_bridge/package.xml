@@ -1,4 +1,3 @@
-<!-- src/udp_raw_bridge/package.xml -->
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
@@ -8,7 +7,7 @@
     UDP socket listener and publisher bridge for simulator → ROS2.
     Each port receives raw UDP packets and publishes them as std_msgs/ByteMultiArray.
   </description>
-  <maintainer email="j1113019@todo.todo">j1113019</maintainer>
+  <maintainer email="j1113019@naver.com">j1113019</maintainer>
   <license>MIT</license>
 
   <!-- Build tool -->
