@@ -37,6 +37,7 @@ add_executable(camera_jpeg_parser src/camera_jpeg_parser.cpp)
 ament_target_dependencies(camera_jpeg_parser rclcpp std_msgs sensor_msgs)
 
 install(TARGETS ego_status_parser env_status_parser iot_status_parser custom_object_parser imu_parser lidar_parser camera_jpeg_parser DESTINATION lib/${PROJECT_NAME})
+install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})
 
 # tests
 if(BUILD_TESTING)
