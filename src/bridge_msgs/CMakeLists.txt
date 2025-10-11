@@ -18,6 +18,8 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/EnviromentStatus.msg"
   "msg/IotStatus.msg"
   "msg/CustomObjectInfo.msg"
+  "msg/IotControl.msg"
+  "msg/HandControlCommand.msg"
   DEPENDENCIES std_msgs geometry_msgs
 )
 
