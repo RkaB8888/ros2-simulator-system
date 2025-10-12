@@ -1,23 +1,40 @@
-# src/udp_raw_bridge/launch/raw_6ports.launch.py
+# udp_raw_bridge/launch/raw_6ports.launch.py
 from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument, LogInfo
+from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
+from ament_index_python.packages import get_package_share_directory
+import os
 
-def n(port, name):
+def n(id_hint: str):
+    # 노드 이름은 YAML 키와 동일(udp_rx_*)
     return Node(
         package='udp_raw_bridge',
         executable='udp_raw_node',
-        name=f'udp_raw_{port}',
-        parameters=[{'listen_port': port, 'topic_name': name}],
-        output='screen'
+        name=f'udp_rx_{id_hint}',
+        output='screen',
+        respawn=LaunchConfiguration('respawn'),
+        parameters=[LaunchConfiguration('config_file')]
     )
 
 def generate_launch_description():
+    default_cfg = os.path.join(
+        get_package_share_directory('bridge_bringup'),
+        'config', 'system.wsl.yaml'
+    )
+
     return LaunchDescription([
-        n(7802, 'env_info_raw'),
-        n(8002, 'iot_status_raw'),
-        n(8202, 'ego_status_raw'),
-        n(8302, 'object_info_raw'),
-        n(9092, 'imu_raw'),
-        n(1232, 'camera_jpeg_raw'),
-        n(9094, 'lidar_raw'),
+        # RX는 바인딩 충돌 방지 위해 기본 false 권장
+        DeclareLaunchArgument('respawn',     default_value='false'),
+        DeclareLaunchArgument('config_file', default_value=default_cfg),
+        LogInfo(msg=['[udp_raw_bridge] using config: ', LaunchConfiguration('config_file')]),
+
+        # YAML의 키(udp_rx_env, udp_rx_iot, ...)와 반드시 일치
+        n('env'),
+        n('iot'),
+        n('ego'),
+        n('object'),
+        n('imu'),
+        n('camera'),
+        n('lidar'),
     ])

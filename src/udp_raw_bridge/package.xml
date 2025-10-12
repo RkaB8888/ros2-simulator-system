@@ -2,7 +2,7 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>udp_raw_bridge</name>
-  <version>0.0.0</version>
+  <version>0.1.0</version>
   <description>
     UDP socket listener and publisher bridge for simulator → ROS2.
     Each port receives raw UDP packets and publishes them as std_msgs/ByteMultiArray.
@@ -16,6 +16,10 @@
   <!-- Core dependencies -->
   <depend>rclcpp</depend>
   <depend>std_msgs</depend>
+
+  <!-- Launch runtime (launch file를 직접 실행할 수 있으므로 권장) -->
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
 
   <!-- Test tools -->
   <test_depend>ament_lint_auto</test_depend>
