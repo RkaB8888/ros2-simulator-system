@@ -18,10 +18,14 @@ ament_target_dependencies(udp_tx_cmd_vel_node rclcpp geometry_msgs)
 add_executable(udp_tx_hand_control_node src/udp_tx_hand_control_node.cpp)
 ament_target_dependencies(udp_tx_hand_control_node rclcpp bridge_msgs)
 
+add_executable(udp_tx_iot_control_node src/udp_tx_iot_control_node.cpp)
+ament_target_dependencies(udp_tx_iot_control_node rclcpp bridge_msgs)
+
 # install
 install(TARGETS 
   udp_tx_cmd_vel_node 
-  udp_tx_hand_control_node 
+  udp_tx_hand_control_node
+  udp_tx_iot_control_node
 DESTINATION lib/${PROJECT_NAME})
 
 
