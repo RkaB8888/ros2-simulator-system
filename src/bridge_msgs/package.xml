@@ -2,10 +2,9 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>bridge_msgs</name>
-  <version>0.0.0</version>
-  <description>C
-    Custom ROS2 message definitions for simulator–ROS2 bridge.
-    Defines unified message types (Ego, Env, IoT, Object) shared across all parser nodes.
+  <version>0.1.0</version>
+  <description>
+    Custom ROS2 message definitions for simulator–ROS2 bridge. Defines unified message types (Ego, Env, IoT, Object) shared across all parser nodes.
   </description>
   <maintainer email="j1113019@naver.com">j1113019</maintainer>
   <license>MIT</license>
