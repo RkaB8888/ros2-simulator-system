@@ -1,0 +1,43 @@
+# ---- RX (udp_raw_bridge) ----
+udp_rx_env:
+  ros__parameters:
+    listen_port: 7802
+    topic_name: env_info_raw
+udp_rx_iot:
+  ros__parameters:
+    listen_port: 8002
+    topic_name: iot_status_raw
+udp_rx_ego:
+  ros__parameters:
+    listen_port: 8202
+    topic_name: ego_status_raw
+udp_rx_object:
+  ros__parameters:
+    listen_port: 8302
+    topic_name: object_info_raw
+udp_rx_imu:
+  ros__parameters:
+    listen_port: 9092
+    topic_name: imu_raw
+udp_rx_camera:
+  ros__parameters:
+    listen_port: 1232
+    topic_name: camera_jpeg_raw
+udp_rx_lidar:
+  ros__parameters:
+    listen_port: 9094
+    topic_name: lidar_raw
+
+# ---- TX (udp_tx_bridge) ----
+udp_tx_cmd_vel:
+  ros__parameters:
+    remote_ip: 172.23.0.1
+    remote_port: 7601
+udp_tx_hand_control:
+  ros__parameters:
+    remote_ip: 172.23.0.1
+    remote_port: 7901
+udp_tx_iot_control:
+  ros__parameters:
+    remote_ip: 172.23.0.1
+    remote_port: 8101
