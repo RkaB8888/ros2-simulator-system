@@ -2,8 +2,11 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>udp_tx_bridge</name>
-  <version>0.0.0</version>
-  <description>TODO: Package description</description>
+  <version>0.1.0</version>
+  <description>
+    ROS 2 → UDP TX bridge nodes for simulator control.
+    Publishes UDP datagrams for /cmd_vel, /hand_control, and /iot_control.
+  </description>
   <maintainer email="j1113019@naver.com">j1113019</maintainer>
   <license>MIT</license>
 
@@ -12,6 +15,10 @@
   <depend>rclcpp</depend>
   <depend>geometry_msgs</depend>
   <depend>bridge_msgs</depend>
+
+  <!-- Launch runtime (launch file를 직접 실행할 수 있으므로 권장) -->
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>

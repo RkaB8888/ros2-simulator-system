@@ -1,30 +1,61 @@
 // src/udp_tx_bridge/src/udp_tx_cmd_vel_node.cpp
 #include <rclcpp/rclcpp.hpp>
 #include <geometry_msgs/msg/twist.hpp>
+#include <rcl_interfaces/msg/set_parameters_result.hpp>
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
-#include <array>
 #include <cstring>
 #include <string>
+#include <vector>
+#include <algorithm>
+#include <cstdint>
 
 namespace proto {
-// 고정 헤더(16B 패딩). 레거시 규격: "#Turtlebot_cmd$" + pad
-static constexpr char HEADER_RAW[] = "#Turtlebot_cmd$";
-static constexpr size_t HEADER_FIXED_LEN = 16;    // 헤더를 16바이트로 맞춤
-static constexpr size_t PAYLOAD_LEN = 8;          // float32 v(4) + float32 w(4)
+// 시뮬레이터가 기대하는 정확한 프레이밍 (이전 파이썬 브릿지 기준)
+// [ "#Turtlebot_cmd$" (15B) ]
+// [ int32 LE: payload len = 8 ]
+// [ int32 LE: 0 ] x 3 (aux)
+// [ float32 LE: linear, float32 LE: angular ] (총 8B)
+// [ "\r\n" (0x0D 0x0A) ]
+
+static constexpr char   HEADER_RAW[]   = "#Turtlebot_cmd$";
+static constexpr size_t HEADER_LEN     = 15;      // 패딩 없음!
+static constexpr uint32_t PAYLOAD_LEN  = 8;       // float32 * 2
+static constexpr uint8_t TAIL_CRLF[2]  = {0x0D, 0x0A};
 } // namespace proto
 
 class UdpTxCmdVelNode : public rclcpp::Node {
 public:
-  UdpTxCmdVelNode() : Node("udp_tx_cmd_vel") {
-    remote_ip_   = declare_parameter<std::string>("remote_ip",   "172.23.0.1"); // WSL→Windows 기본
-    remote_port_ = declare_parameter<int>("remote_port", 7601);
+  UdpTxCmdVelNode() 
+  : Node("udp_tx_cmd_vel", 
+          rclcpp::NodeOptions().automatically_declare_parameters_from_overrides(true)) {
+    // 1) 필수 파라미터 (YAML에서만 제공)
+    if (!this->get_parameter("remote_ip", remote_ip_) ||
+        !this->get_parameter("remote_port", remote_port_) ||
+        remote_ip_.empty() ||
+        remote_port_ <= 0 || remote_port_ > 65535) {
+      RCLCPP_FATAL(get_logger(),
+        "Missing/invalid required parameters: remote_ip/remote_port. "
+        "Pass a valid YAML config (e.g., bridge_bringup/config/system.<env>.yaml).");
+      rclcpp::shutdown();
+      return;
+    }
 
-    // UDP 소켓 준비
+    // 2) 실행 중 파라미터 변경 차단
+    param_cb_ = this->add_on_set_parameters_callback(
+      [this](const std::vector<rclcpp::Parameter>&) {
+        (void)this;
+        rcl_interfaces::msg::SetParametersResult res;
+        res.successful = false;
+        res.reason = "runtime parameter changes disabled";
+        return res;
+      });
+
+    // 3) UDP 소켓 준비 (검증 통과 후)
     sockfd_ = ::socket(AF_INET, SOCK_DGRAM, 0);
     if (sockfd_ < 0) {
       RCLCPP_FATAL(get_logger(), "socket() failed");
@@ -40,14 +71,14 @@ public:
       return;
     }
 
-    // QoS: 최신 명령 1개만 (BestEffort)
+    // 4) 구독 생성
     auto qos = rclcpp::QoS(rclcpp::KeepLast(1)).best_effort();
     sub_ = create_subscription<geometry_msgs::msg::Twist>(
       "/cmd_vel", qos,
       std::bind(&UdpTxCmdVelNode::onTwist, this, std::placeholders::_1));
 
     RCLCPP_INFO(get_logger(),
-      "udp_tx_cmd_vel started → %s:%d (header=16B, payload=8B)",
+      "udp_tx_cmd_vel → %s:%d (framing: header(15) + len(4) + aux(12) + payload(8) + CRLF)",
       remote_ip_.c_str(), remote_port_);
   }
 
@@ -56,21 +87,40 @@ public:
   }
 
 private:
+  static inline void append_bytes(std::vector<uint8_t>& out, const void* src, size_t n) {
+    const auto* p = static_cast<const uint8_t*>(src);
+    out.insert(out.end(), p, p + n);
+  }
+
   void onTwist(const geometry_msgs::msg::Twist & msg) {
-    // 버퍼 구성: [16B header][8B payload]
-    std::array<uint8_t, proto::HEADER_FIXED_LEN + proto::PAYLOAD_LEN> buf{};
-    // 1) 헤더(16B) — 원 문자열을 복사하고, 남는 부분은 0 패딩
-    {
-      const size_t src_len = std::strlen(proto::HEADER_RAW);
-      const size_t copy_len = std::min(src_len, proto::HEADER_FIXED_LEN);
-      std::memcpy(buf.data(), proto::HEADER_RAW, copy_len);
-      // 나머지는 이미 0으로 초기화되어 있음
-    }
-    // 2) 페이로드 — float32 LE로 v,w
-    const float v = static_cast<float>(msg.linear.x);
-    const float w = static_cast<float>(msg.angular.z);
-    std::memcpy(buf.data() + proto::HEADER_FIXED_LEN + 0, &v, sizeof(float));
-    std::memcpy(buf.data() + proto::HEADER_FIXED_LEN + 4, &w, sizeof(float));
+    // payload (float32 LE)
+    const float linear  = static_cast<float>(msg.linear.x);
+    const float angular = static_cast<float>(msg.angular.z);
+
+
+    // 패킷 구성
+    std::vector<uint8_t> buf;
+    buf.reserve(proto::HEADER_LEN + 4 + 12 + proto::PAYLOAD_LEN + 2);
+
+    // 1) 헤더(15B, 패딩 없음)
+    append_bytes(buf, proto::HEADER_RAW, proto::HEADER_LEN);
+    
+    // 2) 길이 필드(int32 LE = 8)
+    const uint32_t len_le = 8;         // x86_64 리틀엔디안 가정
+    append_bytes(buf, &len_le, sizeof(len_le));
+
+    // 3) aux 3개 (int32 LE 0,0,0)
+    const uint32_t zero = 0;
+    append_bytes(buf, &zero, sizeof(zero));
+    append_bytes(buf, &zero, sizeof(zero));
+    append_bytes(buf, &zero, sizeof(zero));
+
+    // 4) payload: float32 LE (linear, angular)
+    append_bytes(buf, &linear,  sizeof(float));
+    append_bytes(buf, &angular, sizeof(float));
+
+    // 5) CRLF
+    append_bytes(buf, proto::TAIL_CRLF, sizeof(proto::TAIL_CRLF));
 
     // 송신
     const ssize_t sent = ::sendto(
@@ -84,14 +134,15 @@ private:
 
   // params
   std::string remote_ip_;
-  int         remote_port_{7601};
+  int         remote_port_;
 
   // UDP
-  int sockfd_{-1};
+  int         sockfd_{-1};
   sockaddr_in dst_{};
 
-  // sub
+  // sub & param-callback
   rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr sub_;
+  rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr param_cb_;
 };
 
 int main(int argc, char ** argv) {

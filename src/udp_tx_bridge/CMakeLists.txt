@@ -28,6 +28,8 @@ install(TARGETS
   udp_tx_iot_control_node
 DESTINATION lib/${PROJECT_NAME})
 
+install(DIRECTORY launch/
+  DESTINATION share/${PROJECT_NAME}/launch)
 
 # tests
 if(BUILD_TESTING)
