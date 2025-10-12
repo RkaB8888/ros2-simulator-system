@@ -1,19 +1,33 @@
-# ROS2 build artifacts
+# ROS2 / colcon
 build/
 install/
 log/
+.colcon/                 # colcon 메타/캐시
+
+# ROS 런타임 로그(사용한다면)
+.ros/
 
 # Python cache
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
+*.pytest_cache/
 
-# VSCode settings
+# VS Code / IDE
 .vscode/
 *.code-workspace
+.idea/
+*.iml
 
-# CMake / Colcon extras
+# CMake / Tooling
 CMakeLists.txt.user
 compile_commands.json
-colcon_cd.sh
+
+# OS 잡파일
+.DS_Store
+Thumbs.db
+
+# 기타(선택)
+*.swp
+*.swo
