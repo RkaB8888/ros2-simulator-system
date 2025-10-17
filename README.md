@@ -104,11 +104,23 @@ README.md                   # (이 파일)
 
 ---
 
-## 로드맵
-- [ ] 경로 추적 알고리즘 이식/개선
-- [ ] SLAM 통합(ROS2 Humble 호환)
-- [ ] FSM 구조 재설계
-- [ ] 시뮬레이터 제어 파이프라인 안정화/테스트 자동화
+## 로드맵 (v2)
+
+- [x] **M0. 브릿지 안정화** — 센서 수신/파싱/제어 송신 통합 테스트 완료 (2025-10-13)
+- [ ] **M1. 오도메트리 파이프라인** — `/ego_status → /odom` + `tf(odom→base_link)` 구현
+- [ ] **M1.5. Safety 체인 구축** — `velocity_smoother → twist_mux → collision_monitor` (최종 게이트)
+- [ ] **M2. 상태추정 고도화(EKF)** — `/wheel_odom`+`/imu` 융합으로 `/odom` 품질 향상
+- [ ] **M2.5. Lifecycle 도입** — FSM 연동 `configure/activate` 절차화(기동/정지/복구 자동화)
+- [ ] **M3. TF/URDF 정합** — 센서/휠 링크 정합 및 프레임 트리 검증
+- [ ] **M4. 맵핑(SLAM)** — `slam_toolbox`로 맵 생성 및 저장
+- [ ] **M5. 측위+Nav2 기동** — `map_server + amcl + nav2_bringup`로 목표점 자율주행
+- [ ] **M6. 경로 추종 튜닝/개발** — Nav2 컨트롤러 튜닝 또는 커스텀 `path_tracker` 플러그인
+- [ ] **M7. 상위 제어(FSM + BT)** — 모드 전환(FSM)과 세부 행동(BT) 하이브리드
+- [ ] **M8. 물체 제어** — 도착 후 정렬/그리퍼 액션(픽앤플레이스)
+- [ ] **M9. 회귀/운영 자동화** — 시나리오별 rosbag 회귀/리포팅
+
+> 참고 문서: `docs/setup_manual.md`, (권장) `docs/ROS2_자율_프로세스_설계_구조_및_작업_순서_v2.md`
+
 
 ## 라이선스
 MIT License
