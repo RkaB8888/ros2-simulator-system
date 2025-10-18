@@ -1,0 +1,15 @@
+# src/state_estimator/params/odom_publisher.yaml
+odom_publisher:
+  ros__parameters:
+    frame_id: "odom"          # 부모 TF 프레임
+    child_frame_id: "base_link"  # 자식 TF 프레임
+    publish_tf: true
+    max_dt_sec: 2.0
+    publish_rate: 0.0          # 0.0이면 콜백마다 즉시 발행, >0이면 주기 발행(Hz)
+    initial_yaw_deg: 0.0       # 시작 헤딩(도)
+    linear_scale: 1.0          # 입력이 m/s라면 1.0, cm/s면 0.01
+    angular_scale: 2.222222      # 입력이 rad/s라면 1.0, deg/s면 0.01745329252
+    covariance:
+      x: 0.02
+      y: 0.02
+      yaw: 0.04
