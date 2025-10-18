@@ -9,12 +9,14 @@ def n(exec_name, name=None):
         package='udp_parsers_cpp',
         executable=exec_name,
         name=name or exec_name,
+        namespace=LaunchConfiguration('ns'),   # ← 네임스페이스 주입 (멀티 인스턴스/로봇 대비)
         output='screen',
         respawn=LaunchConfiguration('respawn')
     )
 
 def generate_launch_description():
     return LaunchDescription([
+        DeclareLaunchArgument('ns', default_value=''), # 기본은 루트 네임스페이스
         DeclareLaunchArgument('respawn', default_value='true'),
 
         # 상태류

@@ -12,6 +12,7 @@ def n(id_hint: str):
         package='udp_raw_bridge',
         executable='udp_raw_node',
         name=f'udp_rx_{id_hint}',
+        namespace=LaunchConfiguration('ns'),  # ← 멀티 인스턴스 대비
         output='screen',
         respawn=LaunchConfiguration('respawn'),
         parameters=[LaunchConfiguration('config_file')]
@@ -24,9 +25,10 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
-        # RX는 바인딩 충돌 방지 위해 기본 false 권장
-        DeclareLaunchArgument('respawn',     default_value='false'),
+        DeclareLaunchArgument('ns', default_value=''),         # 기본 루트
+        DeclareLaunchArgument('respawn',     default_value='false'), # RX는 바인딩 충돌 방지 위해 기본 false 권장
         DeclareLaunchArgument('config_file', default_value=default_cfg),
+        
         LogInfo(msg=['[udp_raw_bridge] using config: ', LaunchConfiguration('config_file')]),
 
         # YAML의 키(udp_rx_env, udp_rx_iot, ...)와 반드시 일치

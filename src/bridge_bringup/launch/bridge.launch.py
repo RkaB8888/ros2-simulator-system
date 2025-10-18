@@ -18,6 +18,8 @@ def generate_launch_description():
     tx_launch      = _pkg_share('udp_tx_bridge',     'launch', 'tx_all.launch.py')
 
     return LaunchDescription([
+        # 공통 네임스페이스(멀티 로봇 대비). 기본은 루트("")
+        DeclareLaunchArgument('ns', default_value=''),
         DeclareLaunchArgument('config_file', default_value=default_cfg),
         # 레이어별 기본 respawn 정책: RX=false, Parsers=true, TX=true
         DeclareLaunchArgument('respawn_raw',     default_value='false'),
@@ -30,6 +32,7 @@ def generate_launch_description():
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(raw_launch),
             launch_arguments={
+                'ns':          LaunchConfiguration('ns'),
                 'config_file': LaunchConfiguration('config_file'),
                 'respawn':     LaunchConfiguration('respawn_raw'),
             }.items(),
@@ -39,6 +42,7 @@ def generate_launch_description():
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(parsers_launch),
             launch_arguments={
+                'ns':      LaunchConfiguration('ns'), 
                 'respawn': LaunchConfiguration('respawn_parsers'),
             }.items(),
         ),
@@ -47,6 +51,7 @@ def generate_launch_description():
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(tx_launch),
             launch_arguments={
+                'ns':          LaunchConfiguration('ns'),  
                 'config_file': LaunchConfiguration('config_file'),
                 'respawn':     LaunchConfiguration('respawn_tx'),
             }.items(),

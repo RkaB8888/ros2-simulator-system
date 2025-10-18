@@ -2,7 +2,7 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>state_estimator</name>
-  <version>0.0.0</version>
+  <version>0.0.1</version>
   <description>Convert /ego_status to /odom and broadcast odom->base_link TF</description>
   <maintainer email="j1113019@naver.com">j1113019</maintainer>
   <license>MIT</license>

@@ -11,6 +11,7 @@ def n(exec_name, name):
         package='udp_tx_bridge',
         executable=exec_name,
         name=name,
+        namespace=LaunchConfiguration('ns'),   # ← 네임스페이스 주입
         output='screen',
         respawn=LaunchConfiguration('respawn'),
         parameters=[LaunchConfiguration('config_file')]
@@ -25,6 +26,7 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
+        DeclareLaunchArgument('ns', default_value=''),        # 루트 네임스페이스
         DeclareLaunchArgument('respawn',     default_value='true'),
         DeclareLaunchArgument('config_file', default_value=default_cfg),
 
