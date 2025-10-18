@@ -17,6 +17,7 @@ Windows(유니티 시뮬레이터)와 WSL2/Ubuntu(ROS2) 사이를 **UDP**로 연
 ### 패키지 역할
 
 - **`bridge_bringup`** : **통합 설정 YAML**과 **일괄 런치** 제공 (본 매뉴얼의 기본 진입점)
+- **state_estimator**: `/ego_status` 입력을 받아 `/odom` 및 `TF(odom→base_link)`를 발행하는 오도메트리 노드(`odom_publisher`). *환경 의존 설정 없음*.
 - **`bridge_msgs`** : 프로젝트 전용 메시지들
 - **`udp_raw_bridge`** : UDP → `std_msgs/ByteMultiArray` RAW 퍼블리셔
 - **`udp_parsers_cpp`** : RAW → 의미 있는 토픽(ego/env/iot/object/imu/lidar/camera)으로 파싱
@@ -171,9 +172,10 @@ ros2 launch bridge_bringup bridge.launch.py
 
 선택 인자:
 ```bash
-ros2 launch bridge_bringup bridge.launch.py   config_file:=/absolute/path/to/system.<env>.yaml   respawn_raw:=false respawn_parsers:=true respawn_tx:=true
+ros2 launch bridge_bringup bridge.launch.py ns:=robot1 config_file:=/absolute/path/to/system.<env>.yaml   respawn_raw:=false respawn_parsers:=true respawn_tx:=true
 ```
 
+- **ns**: 멀티 로봇/멀티 인스턴스 실행 시 네임스페이스 분리(기본은 빈 문자열로 루트 `/`).
 - RAW 레이어는 포트 재바인드 문제를 피하려고 **respawn=false** 권장
 - Parsers/TX 레이어는 **respawn=true** 기본
 
@@ -181,13 +183,13 @@ ros2 launch bridge_bringup bridge.launch.py   config_file:=/absolute/path/to/sys
 
 ```bash
 # RAW
-ros2 launch udp_raw_bridge raw_6ports.launch.py config_file:=<yaml>
+ros2 launch udp_raw_bridge raw_6ports.launch.py ns:=robot1 config_file:=<yaml>
 
 # Parsers
 ros2 launch udp_parsers_cpp parsers_all.launch.py
 
 # TX
-ros2 launch udp_tx_bridge tx_all.launch.py config_file:=<yaml>
+ros2 launch udp_tx_bridge tx_all.launch.py ns:=robot1 config_file:=<yaml>
 ```
 
 ---
@@ -226,6 +228,14 @@ while ($true) {
 ```
 
 - 시뮬레이터에서 실제 **터틀봇 이동**과 **ego_status 속도 변화**로 최종 검증
+
+### 7.3 오도메트리 확인(옵션)
+
+```bash
+ros2 launch state_estimator odom.launch.py
+```
+- 별도 환경 의존 파라미터 없이 기본값으로 동작합니다. RViz에서 Fixed Frame을 `odom`으로 설정 후 Odometry 표시로 궤적/방향을 확인할 수 있습니다.
+
 
 ---
 
