@@ -25,6 +25,8 @@ def generate_launch_description():
         DeclareLaunchArgument('respawn_raw',     default_value='false'),
         DeclareLaunchArgument('respawn_parsers', default_value='true'),
         DeclareLaunchArgument('respawn_tx',      default_value='true'),
+        # RAW 레이어 노드들의 로그 레벨을 중앙에서 선언
+        DeclareLaunchArgument('log_level_raw', default_value='info'),
 
         LogInfo(msg=['[bridge_all] using config: ', LaunchConfiguration('config_file')]),
 
@@ -35,6 +37,7 @@ def generate_launch_description():
                 'ns':          LaunchConfiguration('ns'),
                 'config_file': LaunchConfiguration('config_file'),
                 'respawn':     LaunchConfiguration('respawn_raw'),
+                'log_level':   LaunchConfiguration('log_level_raw'),
             }.items(),
         ),
 

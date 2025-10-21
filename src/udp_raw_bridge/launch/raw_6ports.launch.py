@@ -14,6 +14,10 @@ def n(id_hint: str):
         name=f'udp_rx_{id_hint}',
         namespace=LaunchConfiguration('ns'),  # ← 멀티 인스턴스 대비
         output='screen',
+        arguments=[
+            '--ros-args', 
+            '--log-level', LaunchConfiguration('log_level')
+        ],
         respawn=LaunchConfiguration('respawn'),
         parameters=[LaunchConfiguration('config_file')]
     )
@@ -28,6 +32,7 @@ def generate_launch_description():
         DeclareLaunchArgument('ns', default_value=''),         # 기본 루트
         DeclareLaunchArgument('respawn',     default_value='false'), # RX는 바인딩 충돌 방지 위해 기본 false 권장
         DeclareLaunchArgument('config_file', default_value=default_cfg),
+        DeclareLaunchArgument('log_level', default_value='info'),
         
         LogInfo(msg=['[udp_raw_bridge] using config: ', LaunchConfiguration('config_file')]),
 

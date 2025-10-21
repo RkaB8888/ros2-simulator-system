@@ -11,6 +11,10 @@ def n(exec_name, name=None):
         name=name or exec_name,
         namespace=LaunchConfiguration('ns'),   # ← 네임스페이스 주입 (멀티 인스턴스/로봇 대비)
         output='screen',
+        arguments=[       # <-- 로그 레벨 설정
+            '--ros-args', 
+            '--log-level', LaunchConfiguration('log_level')
+        ],
         respawn=LaunchConfiguration('respawn')
     )
 
@@ -18,6 +22,7 @@ def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument('ns', default_value=''), # 기본은 루트 네임스페이스
         DeclareLaunchArgument('respawn', default_value='true'),
+        DeclareLaunchArgument('log_level', default_value='info'),
 
         # 상태류
         n('ego_status_parser'),

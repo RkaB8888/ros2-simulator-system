@@ -13,6 +13,10 @@ def n(exec_name, name):
         name=name,
         namespace=LaunchConfiguration('ns'),   # ← 네임스페이스 주입
         output='screen',
+        arguments=[
+            '--ros-args', 
+            '--log-level', LaunchConfiguration('log_level')
+        ],
         respawn=LaunchConfiguration('respawn'),
         parameters=[LaunchConfiguration('config_file')]
     )
@@ -29,6 +33,7 @@ def generate_launch_description():
         DeclareLaunchArgument('ns', default_value=''),        # 루트 네임스페이스
         DeclareLaunchArgument('respawn',     default_value='true'),
         DeclareLaunchArgument('config_file', default_value=default_cfg),
+        DeclareLaunchArgument('log_level', default_value='info'),
 
         n('udp_tx_cmd_vel_node',      'udp_tx_cmd_vel'),
         n('udp_tx_hand_control_node', 'udp_tx_hand_control'),

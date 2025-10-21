@@ -18,14 +18,21 @@ def generate_launch_description():
     ego_in_arg  = DeclareLaunchArgument('ego_in',  default_value='ego_status')
     odom_out_arg= DeclareLaunchArgument('odom_out', default_value='odom')
 
+    # log 레벨 인자 추가
+    log_level = DeclareLaunchArgument('log_level', default_value='info')
+    
     return LaunchDescription([
-        ns_arg, params_arg, ego_in_arg, odom_out_arg,
+        ns_arg, params_arg, ego_in_arg, odom_out_arg, log_level,
         Node(
             package='state_estimator',
             executable='odom_publisher',
             name='odom_publisher',
             namespace=LaunchConfiguration('ns'),          # ← 네임스페이스 주입
             output='screen',
+            arguments=[       # <-- 로그 레벨 설정
+            '--ros-args', 
+            '--log-level', LaunchConfiguration('log_level')
+            ],
             parameters=[LaunchConfiguration('params')],
             remappings=[
                 ('ego_status', LaunchConfiguration('ego_in')), # 입력 훅
