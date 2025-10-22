@@ -3,6 +3,7 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, LogInfo, IncludeLaunchDescription
 from launch.substitutions import LaunchConfiguration
 from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.conditions import IfCondition
 from ament_index_python.packages import get_package_share_directory
 import os
 
@@ -16,6 +17,7 @@ def generate_launch_description():
     raw_launch     = _pkg_share('udp_raw_bridge',    'launch', 'raw_6ports.launch.py')
     parsers_launch = _pkg_share('udp_parsers_cpp',   'launch', 'parsers_all.launch.py')
     tx_launch      = _pkg_share('udp_tx_bridge',     'launch', 'tx_all.launch.py')
+    safety_launch  = _pkg_share('safety_bringup',    'launch', 'safety_chain.launch.py')
 
     return LaunchDescription([
         # 공통 네임스페이스(멀티 로봇 대비). 기본은 루트("")
@@ -25,6 +27,8 @@ def generate_launch_description():
         DeclareLaunchArgument('respawn_raw',     default_value='false'),
         DeclareLaunchArgument('respawn_parsers', default_value='true'),
         DeclareLaunchArgument('respawn_tx',      default_value='true'),
+        # 세이프티 체인 on/off 토글(필요 시 비활성)
+        DeclareLaunchArgument('enable_safety',   default_value='true'),
         # RAW 레이어 노드들의 로그 레벨을 중앙에서 선언
         DeclareLaunchArgument('log_level_raw', default_value='info'),
 
@@ -47,6 +51,17 @@ def generate_launch_description():
             launch_arguments={
                 'ns':      LaunchConfiguration('ns'), 
                 'respawn': LaunchConfiguration('respawn_parsers'),
+                'log_level':   LaunchConfiguration('log_level_raw'),
+            }.items(),
+        ),
+
+        # SAFETY 체인 (twist_mux → velocity_smoother → collision_monitor)
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(safety_launch),
+            condition=IfCondition(LaunchConfiguration('enable_safety')),
+            launch_arguments={
+                'ns':            LaunchConfiguration('ns'),
+                'log_level':     LaunchConfiguration('log_level_raw'),
             }.items(),
         ),
 
@@ -57,6 +72,7 @@ def generate_launch_description():
                 'ns':          LaunchConfiguration('ns'),  
                 'config_file': LaunchConfiguration('config_file'),
                 'respawn':     LaunchConfiguration('respawn_tx'),
+                'log_level':   LaunchConfiguration('log_level_raw'),
             }.items(),
         ),
     ])

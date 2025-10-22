@@ -1,0 +1,45 @@
+# =====================================================================
+# velocity_smoother.yaml
+# Package: safety_bringup
+# Reference: https://docs.nav2.org/configuration/packages/configuring-velocity-smoother.html
+# Description:
+#   입력된 cmd_vel을 일정한 가속도 프로파일로 보정하여
+#   급격한 속도 변화(가속/감속)를 방지하는 스무딩 노드 설정.
+#   ROS2 Nav2 Humble 버전 기준 파라미터 구조에 맞게 작성됨.
+# =====================================================================
+
+velocity_smoother:
+  ros__parameters:
+    # 출력 주기 (Hz)
+    smoothing_frequency: 30.0
+
+    # 속도 스케일링 비율 사용 여부 (false = 고정)
+    scale_velocities: false
+
+    # 피드백 모드: "OPEN_LOOP" (기본) / "CLOSED_LOOP" (odom 기반 보정)
+    feedback: "OPEN_LOOP"
+
+    # 최대/최소 선형·각속도 [x, y, θ] (단위: m/s, rad/s)
+    max_velocity: [1.0, 0.0, 2.2]
+    min_velocity: [-1.0, 0.0, -2.2]
+
+    # 미세한 입력값 무시 구간 (deadband)
+    deadband_velocity: [0.0, 0.0, 0.0]
+
+    # 입력이 끊긴 뒤 정지로 판단하기까지의 시간 (초)
+    velocity_timeout: 0.5
+
+    # 최대 가속도 / 최대 감속도 [x, y, θ] (단위: m/s², rad/s²)
+    max_accel: [0.5, 0.0, 1.5]
+    max_decel: [-0.5, 0.0, -1.5]
+
+    # "CLOSED_LOOP" 모드일 때만 사용되는 피드백 관련 설정
+    odom_topic: "odom"        # 오도메트리 입력 토픽
+    odom_duration: 0.1        # 오도메트리 데이터 유효 시간 (초)
+
+    # 실시간 우선순위 모드 (일반 환경에서는 false 유지)
+    use_realtime_priority: false
+
+    # Stamped Twist 메시지 사용 여부
+    # (Humble에서는 기본 false이며, Nav2 Jazzy 이상에서 true 권장)
+    enable_stamped_cmd_vel: false

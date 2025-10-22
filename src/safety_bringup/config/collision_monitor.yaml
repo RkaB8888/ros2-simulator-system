@@ -1,0 +1,67 @@
+# =====================================================================
+# collision_monitor.yaml
+# Package: safety_bringup
+# Reference: https://docs.nav2.org/configuration/packages/collision_monitor/configuring-collision-monitor-node.html
+# Description:
+#   로봇 주변의 폴리곤 영역(전방·후방 등)에 대한 충돌 감시를 수행.
+#   센서 입력(scan, pointcloud 등)을 기반으로 장애물 접근 시
+#   감속(slowdown) 또는 정지(stop) 명령을 적용한다.
+#   ※ 공식 문서 예제는 Humble 버전과 일부 불일치가 있으므로,
+#     Nav2 Humble 브랜치 코드 기준으로 작성함.
+# =====================================================================
+
+collision_monitor:
+  ros__parameters:
+    # 기준 프레임 설정
+    base_frame_id: "base_link"
+    odom_frame_id: "odom"
+
+    # 입력/출력 cmd_vel 토픽 (런치 리맵 대신 파라미터 고정)
+    cmd_vel_in_topic:  "cmd_vel_smooth"
+    cmd_vel_out_topic: "cmd_vel"
+
+    # 안전 기능 비활성화 (현재 단계에서는 pass-through로 동작)
+    use_slowdown: false
+    use_stop: false
+
+    # 소스 타임아웃 및 감속 비율 (센서 활성 시 적용)
+    source_timeout: 0.5
+    slowdown_ratio: 0.5
+
+    # Humble 버전에서 필수 항목: observation_sources가 비어 있으면 오류 발생
+    # 더미 소스를 추가해 초기화 에러를 방지
+    observation_sources: ["dummy_scan"]
+
+    # 감시 폴리곤 목록 정의
+    polygons: ["slow_zone_front", "stop_zone_front", "stop_zone_back"]
+
+    # 전방 감속 영역
+    slow_zone_front:
+      type: "polygon"
+      # 폴리곤 꼭짓점 좌표 (1차원 double 배열 형식)
+      points: [0.0, 0.25, 0.5, 0.25, 0.5, -0.25, 0.0, -0.25]
+      action_type: "slowdown"
+      visualize: true
+      polygon_pub_topic: "polygon_slow_front"
+
+    # 전방 정지 영역
+    stop_zone_front:
+      type: "polygon"
+      points: [0.0, 0.20, 0.25, 0.20, 0.25, -0.20, 0.0, -0.20]
+      action_type: "stop"
+      visualize: true
+      polygon_pub_topic: "polygon_stop_front"
+
+    # 후방 정지 영역
+    stop_zone_back:
+      type: "polygon"
+      points: [-0.25, 0.20, 0.0, 0.20, 0.0, -0.20, -0.25, -0.20]
+      action_type: "stop"
+      visualize: true
+      polygon_pub_topic: "polygon_stop_back"
+
+    # 비활성화된 더미 센서 소스 (초기화용)
+    dummy_scan:
+      type: "scan"
+      topic: "/scan"     # 토픽명은 중요하지 않음
+      enabled: false     # 반드시 false로 유지
