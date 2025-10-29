@@ -20,7 +20,7 @@ collision_monitor:
     cmd_vel_in_topic:  "cmd_vel_smooth"
     cmd_vel_out_topic: "cmd_vel"
 
-    # 안전 기능 비활성화 (현재 단계에서는 pass-through로 동작)
+    # 안전 기능 활성화 (M1.5b 기능 검증 시작)
     use_slowdown: false
     use_stop: false
 
@@ -28,8 +28,8 @@ collision_monitor:
     source_timeout: 0.5
     slowdown_ratio: 0.5
 
-    # Humble 버전에서 필수 항목: observation_sources가 비어 있으면 오류 발생
-    # 더미 소스를 추가해 초기화 에러를 방지
+    # 실제 센서 소스 사용: LiDAR /scan
+    # ※ 네임스페이스를 타게 상대 토픽명 사용 (예: robot1/scan)
     observation_sources: ["dummy_scan"]
 
     # 감시 폴리곤 목록 정의
@@ -60,7 +60,13 @@ collision_monitor:
       visualize: true
       polygon_pub_topic: "polygon_stop_back"
 
-    # 비활성화된 더미 센서 소스 (초기화용)
+    # # LiDAR 스캔 소스 (활성)
+    # lidar_scan:
+    #   type: "scan"
+    #   topic: "scan"        # 상대 토픽(=> ns 적용됨). 절대경로(/scan) 사용 금지.
+    #   enabled: true
+
+    # (참고) 더미 소스는 제거함: observation_sources에서 제외
     dummy_scan:
       type: "scan"
       topic: "/scan"     # 토픽명은 중요하지 않음

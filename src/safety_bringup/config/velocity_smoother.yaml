@@ -20,8 +20,8 @@ velocity_smoother:
     feedback: "OPEN_LOOP"
 
     # 최대/최소 선형·각속도 [x, y, θ] (단위: m/s, rad/s)
-    max_velocity: [1.0, 0.0, 2.2]
-    min_velocity: [-1.0, 0.0, -2.2]
+    max_velocity: [1.0, 0.0, 1.0]
+    min_velocity: [-1.0, 0.0, -1.0]
 
     # 미세한 입력값 무시 구간 (deadband)
     deadband_velocity: [0.0, 0.0, 0.0]
@@ -30,8 +30,8 @@ velocity_smoother:
     velocity_timeout: 0.5
 
     # 최대 가속도 / 최대 감속도 [x, y, θ] (단위: m/s², rad/s²)
-    max_accel: [0.5, 0.0, 1.5]
-    max_decel: [-0.5, 0.0, -1.5]
+    max_accel: [1.0, 0.0, 2.0]
+    max_decel: [-2.0, 0.0, -2.0]
 
     # "CLOSED_LOOP" 모드일 때만 사용되는 피드백 관련 설정
     odom_topic: "odom"        # 오도메트리 입력 토픽
