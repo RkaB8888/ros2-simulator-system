@@ -22,7 +22,7 @@ collision_monitor:
 
     # 안전 기능 활성화 (M1.5b 기능 검증 시작)
     use_slowdown: false
-    use_stop: false
+    use_stop: true
 
     # 소스 타임아웃 및 감속 비율 (센서 활성 시 적용)
     source_timeout: 0.5
@@ -30,7 +30,19 @@ collision_monitor:
 
     # 실제 센서 소스 사용: LiDAR /scan
     # ※ 네임스페이스를 타게 상대 토픽명 사용 (예: robot1/scan)
-    observation_sources: ["dummy_scan"]
+    observation_sources: ["lidar_scan"]
+
+    # LiDAR 스캔 소스 (활성)
+    lidar_scan:
+      type: "scan"
+      topic: "scan"        # 상대 토픽(=> ns 적용됨). 절대경로(/scan) 사용 금지.
+      enabled: true
+
+    # (참고) 더미 소스는 제거함: observation_sources에서 제외
+    # dummy_scan:
+    #   type: "scan"
+    #   topic: "/scan"     # 토픽명은 중요하지 않음
+    #   enabled: false     # 반드시 false로 유지
 
     # 감시 폴리곤 목록 정의
     polygons: ["slow_zone_front", "stop_zone_front", "stop_zone_back"]
@@ -59,15 +71,3 @@ collision_monitor:
       action_type: "stop"
       visualize: true
       polygon_pub_topic: "polygon_stop_back"
-
-    # # LiDAR 스캔 소스 (활성)
-    # lidar_scan:
-    #   type: "scan"
-    #   topic: "scan"        # 상대 토픽(=> ns 적용됨). 절대경로(/scan) 사용 금지.
-    #   enabled: true
-
-    # (참고) 더미 소스는 제거함: observation_sources에서 제외
-    dummy_scan:
-      type: "scan"
-      topic: "/scan"     # 토픽명은 중요하지 않음
-      enabled: false     # 반드시 false로 유지
