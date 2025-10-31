@@ -48,7 +48,8 @@ private:
       if (c_soi != npos) {
         size_t c_eoi = findMarker(chunk, c_soi + 2, EOI0, EOI1);
         if (c_eoi != npos && c_eoi + 2 <= chunk.size()) {
-          publishJpeg(chunk.data() + c_soi, c_eoi + 2 - c_soi);
+          const auto stamp = this->now();
+          publishJpeg(chunk.data() + c_soi, c_eoi + 2 - c_soi, stamp);
           return;
         }
       }
