@@ -22,11 +22,11 @@ public:
 
     // sub
     sub_ = create_subscription<std_msgs::msg::ByteMultiArray>( // /ego_status_raw 구독. SensorDataQoS()는 센서 스트림에 적합(주로 BestEffort)
-      "/ego_status_raw", rclcpp::SensorDataQoS(),
+      "ego_status_raw", rclcpp::SensorDataQoS(),
       std::bind(&EgoStatusParser::onRaw, this, _1));
     
     // pub
-    tb_pub_   = create_publisher<bridge_msgs::msg::TurtlebotStatus>("/ego_status", 10); // 상태 퍼블리셔.
+    tb_pub_   = create_publisher<bridge_msgs::msg::TurtlebotStatus>("ego_status", 10); // 상태 퍼블리셔.
   }
 
   // 콜백: RAW → 파싱
