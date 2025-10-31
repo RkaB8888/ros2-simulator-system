@@ -20,10 +20,6 @@ collision_monitor:
     cmd_vel_in_topic:  "cmd_vel_smooth"
     cmd_vel_out_topic: "cmd_vel"
 
-    # 안전 기능 활성화 (M1.5b 기능 검증 시작)
-    use_slowdown: false
-    use_stop: true
-
     # 소스 타임아웃 및 감속 비율 (센서 활성 시 적용)
     source_timeout: 0.5
     slowdown_ratio: 0.5
