@@ -26,11 +26,12 @@ public:
   {
     // /imu_raw는 SensorDataQoS(BEST_EFFORT)
     sub_ = create_subscription<std_msgs::msg::ByteMultiArray>(
-      "/imu_raw", rclcpp::SensorDataQoS(),
+      "imu_raw", rclcpp::SensorDataQoS(),
       std::bind(&ImuParser::onRaw, this, _1));
 
     // 결과는 rqt/rviz 친화적으로 RELIABLE(depth=10)
-    pub_ = create_publisher<sensor_msgs::msg::Imu>("/imu", 10);
+    pub_ = create_publisher<sensor_msgs::msg::Imu>("imu", 10);
+    frame_id_ = this->declare_parameter<std::string>("frame_id", "imu_link");
 
     RCLCPP_INFO(get_logger(), "imu_parser started (fixed layout: header=9, len=4, pad=12, payload=10*double)");
   }
@@ -38,6 +39,7 @@ public:
 private:
   void onRaw(const std_msgs::msg::ByteMultiArray::SharedPtr msg)
   {
+    const auto stamp = this->now();
     const auto &buf = msg->data;
 
     // 최소 길이 검사
@@ -66,8 +68,8 @@ private:
     rd_f64_le(az, p + 9 * sizeof(double));
 
     sensor_msgs::msg::Imu out;
-    out.header.stamp = now();
-    out.header.frame_id = "imu_link";  // sensor_bringup과 동일하게 고정
+    out.header.stamp = stamp;
+    out.header.frame_id = frame_id_;
 
     // orientation (쿼터니언)
     out.orientation.w = qw;
@@ -92,7 +94,7 @@ private:
 
     pub_->publish(out);
   }
-
+  std::string frame_id_;
   rclcpp::Subscription<std_msgs::msg::ByteMultiArray>::SharedPtr sub_;
   rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr pub_;
 };
