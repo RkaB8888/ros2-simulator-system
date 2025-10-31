@@ -38,7 +38,10 @@ class ScanNormalizer(Node):
         if self.rotate_180 and msg.ranges:
             mid = len(msg.ranges) // 2
             ranges_buf = msg.ranges[mid:] + msg.ranges[:mid]
-            intensities_buf = list(msg.intensities) if msg.intensities else []
+            if msg.intensities:
+                intensities_buf = msg.intensities[mid:] + msg.intensities[:mid]
+            else:
+                intensities_buf = []
             out.angle_min = self.wrap_angle(msg.angle_min + math.pi)
             out.angle_max = self.wrap_angle(msg.angle_max + math.pi)
         else:
