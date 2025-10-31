@@ -109,7 +109,8 @@ private:
       }
 
       // 프레임 발행
-      publishJpeg(jpg, jpeg_len);
+      const auto stamp = this->now();
+      publishJpeg(jpg, jpeg_len, stamp);
       RCLCPP_INFO(get_logger(), "JPEG frame by MOR len=%u", jpeg_len);
 
       // 소비(헤더+JPEG) 후 다음 프레임 탐색
@@ -146,7 +147,8 @@ private:
       }
 
       const size_t frame_len = eoi + 2 - soi;
-      publishJpeg(buffer_.data() + soi, frame_len);
+      const auto stamp = this->now();
+      publishJpeg(buffer_.data() + soi, frame_len, stamp);
       RCLCPP_INFO(get_logger(), "JPEG frame by SOI/EOI %zub", frame_len);
 
       buffer_.erase(buffer_.begin(),
@@ -185,10 +187,10 @@ private:
   }
 
   // CompressedImage 발행
-  void publishJpeg(const uint8_t* data, size_t len)
+  void publishJpeg(const uint8_t* data, size_t len, const rclcpp::Time& stamp)
   {
     sensor_msgs::msg::CompressedImage out;
-    out.header.stamp = now();
+    out.header.stamp = stamp;
     out.header.frame_id = "camera_link";
     out.format = "jpeg";
     out.data.resize(len);
