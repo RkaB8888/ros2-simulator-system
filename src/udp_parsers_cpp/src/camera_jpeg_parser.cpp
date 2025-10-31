@@ -189,7 +189,7 @@ private:
   {
     sensor_msgs::msg::CompressedImage out;
     out.header.stamp = now();
-    out.header.frame_id = "camera";
+    out.header.frame_id = "camera_link";
     out.format = "jpeg";
     out.data.resize(len);
     std::memcpy(out.data.data(), data, len);

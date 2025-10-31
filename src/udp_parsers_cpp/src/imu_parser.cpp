@@ -67,7 +67,7 @@ private:
 
     sensor_msgs::msg::Imu out;
     out.header.stamp = now();
-    out.header.frame_id = "imu";  // 레거시와 동일하게 고정
+    out.header.frame_id = "imu_link";  // sensor_bringup과 동일하게 고정
 
     // orientation (쿼터니언)
     out.orientation.w = qw;
