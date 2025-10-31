@@ -1,129 +1,159 @@
-# ROS2 Simulator System (Humble, C++ / WSL)
+# ROS 2 Simulator System (Humble, C++ / WSL)
 
-이 저장소는 교육용 시뮬레이터(MORAI SIM) 환경에서 사용된 브릿지 및 자율주행 관련 시스템을  
-**ROS 2 Humble + C++ + WSL(리눅스)** 기반으로 재구현하고, 네트워크 구조를 현대화한 프로젝트입니다.
+교육용 시뮬레이터(MORAI SIM) 기반 환경을 **ROS 2 Humble + C++ + WSL(리눅스)** 로 재구현한 프로젝트입니다.  
+Windows/Python(Eloquent) 시절의 레거시를 참고하되, **UDP I/O ↔ 파서 ↔ 브릿지 ↔ 세이프티 체인**을 현대화하고
+프레임·타임스탬프·QoS를 정돈하여 **재현 가능한 개발 베이스**를 제공합니다.
 
-기존 Windows/Python(Eloquent) 기반 환경을 참고하여 **UDP I/O, 파서, 브릿지, 세이프티 체인 구조를 최적화**하였으며,  
-2025-09-27에 시작해 **M1.5a Safety 체인 구축**(2025-10-23)까지 완료되었습니다.
+- 착수: 2025‑09‑27
+- 최신 마일스톤: **M1.5b 센서 기반 안전 제동(Stop/Slowdown) 검증 완료** — 2025‑11‑01
 
-이후 단계로 SLAM, 경로 추적, FSM 등 고수준 자율주행 알고리즘을 이 환경에서 재설계할 예정입니다.
-
-> 🔗 참고 레거시: [원본 프로젝트 (WellDone)](https://github.com/RkaB8888/SSAFY-Specialized-PJT-WellDone.git)
-
----
-
-## 목표와 배경
-- Python(Eloquent, Windows) → **C++(Humble, Linux/WSL)** 환경으로 전환  
-- 기존 시뮬레이터 UDP 프로토콜 호환 유지  
-  (Bridge Layer: RX → Parser → TX)
-- **중앙집중식 YAML 설정**으로 IP/Port 관리 단일화  
-- **Safety Chain 구축**을 통해 ROS2 Nav2 기반 속도 제어 표준화  
-- 향후 SLAM·FSM·Path Tracking을 위한 통합 기반 확보
+> 🔗 레거시 참고: WellDone (Windows/Eloquent)  
+> https://github.com/RkaB8888/SSAFY-Specialized-PJT-WellDone.git
 
 ---
 
-## 구성(패키지)
+## 1) 목표
+- Python(Eloquent, Windows) → **C++(Humble, Linux/WSL)** 전환
+- **중앙집중 YAML**로 네트워크/IP/포트 및 센서 설정 일원화
+- **Safety Chain 표준화**(twist_mux → velocity_smoother → collision_monitor)
+- 프레임/타임스탬프 정합으로 RViz/Nav2 경고 제거
+- 이후 SLAM/경로추종/FSM을 위한 기반 확보
+
+---
+
+## 2) 패키지 구조
 - **`bridge_bringup`**: 통합 런치 & 공용 설정(YAML). 모든 IP/포트 및 세이프티 토글 관리.
 - **`udp_raw_bridge`**: 시뮬레이터 → ROS2 수신(RX). 각 UDP 포트를 바인딩해 raw 바이트를 퍼블리시.
 - **`udp_parsers_cpp`**: RAW 토픽을 ROS 메시지로 파싱(ego/env/iot/object/imu/lidar/camera).
 - **`udp_tx_bridge`**: ROS 토픽(`/cmd_vel`, `/hand_control`, `/iot_control`)을 **레거시와 동일한 UDP 프레이밍**으로 송신(TX).
-- **`safety_bringup`** *(신규)*:  
-  - `twist_mux` → `velocity_smoother` → `collision_monitor` 체인 구성  
-  - 속도 중재, 가감속 제한, 충돌 감지 등 안전 계층 관리  
-  - Humble 기준 YAML 호환성(Flat double polygon, dummy observation source 등)
+- **`safety_bringup`**: `twist_mux` → `nav2_velocity_smoother` → `nav2_collision_monitor` 체인 구성
+- **`sensor_bringup`** *(신규)*:
+  - 센서 공통 설정 `config/sensors.yaml`
+  - `scan_normalizer` 노드로 LiDAR 배열/프레임 보정
+  - 프레임 일관화: **LiDAR=`laser_link`, IMU=`imu_link`, Camera=`camera_link`**
 - **`state_estimator`**: `/ego_status` → `/odom` + `TF(odom→base_link)` 변환
 - **`bridge_msgs`**: 공용 메시지 정의
 
 ---
 
-## 현재 상태 (2025-10-23)
-- ✅ **M1.5a Safety 체인 통합 완료**
-  - twist_mux, nav2_velocity_smoother, nav2_collision_monitor 구성
-  - `/cmd_vel_nav` → `/cmd_vel_mux` → `/cmd_vel_smooth` → `/cmd_vel` 체인 검증
-  - rqt_plot에서 스무딩 램프 업/다운 정상 확인
-  - RViz에서 polygon_* 시각화 정상 표시 (Trans. Local QoS)
-- ✅ **라이프사이클 노드 활성화 지원** (`ros2 lifecycle set ... configure → activate`)
-- ✅ **Humble 기준 호환성 문제 해결**
-  - collision_monitor의 points 형식(double array) 수정
-  - observation_sources dummy_scan 추가
-- ✅ **WSL↔Windows UDP 통신 및 시뮬레이터 제어 검증 완료**
-- 🔧 **다음 단계 (M1.5b)**: LiDAR/Scan 센서 입력과 slowdown/stop 활성화 예정
+## 3) 현재 상태 (2025‑11‑01)
+- ✅ **M1.5b 완료: LiDAR → Collision Monitor 연동**
+  - `/scan` 기반 전방/후방 폴리곤 감시
+  - `action_type: slowdown/stop` 동작 검증, `slowdown_ratio` 반영 확인
+  - **타임스탬프 정합**으로 “미래 외삽” 경고 해소
+- ✅ **프레임 정리**
+  - LiDAR=`laser_link`, IMU=`imu_link`, Camera=`camera_link`
+  - (필요 시) `static_transform_publisher`로 센서→`base_link` 정합
+- ✅ **LiDAR 정규화**
+  - 시뮬 특성 보상: **180° 회전 옵션** 지원(`rotate_180_degrees: true`), **좌우 반전 비활성화**(`invert_cw_to_ccw: false`)
+  - `scan_time/time_increment = 0` 정책(시뮬 단일 스탬프 프레임)
+- 🔜 **다음 단계 (M2.0)**: `/ego_status` + `/imu` EKF 융합(odometry 고도화)
 
 ---
 
-## 빠른 시작 (요약)
-> 상세 설치 및 검증 절차는 `docs/setup_manual_2025-10-23.md` 참고
+## 4) 빠른 시작
+> 상세 설치/네트워크/검증 절차는 **`docs/setup_manual_2025-10-31.md`** 참조.
 
 ```bash
-# 1) ROS2 Humble + colcon 환경 (WSL/Ubuntu 22.04)
-cd ~/ros2_ws/src
-git clone <this_repo> .
-cd ..
+# 0) 빌드 & 환경설정
 colcon build
 source install/setup.bash
 
-# 2) 통합 브릿지 실행
+# 1) 통합 브릿지 실행
 ros2 launch bridge_bringup bridge.launch.py log_level_raw:=info
 
-# 3) 라이프사이클 활성화
+# 2) 센서 브링업 (LiDAR 정규화 포함)
+ros2 launch sensor_bringup sensor_bringup.launch.py log_level:=info
+
+# 3) odom 발행
+ros2 launch state_estimator odom.launch.py
+
+# 4) 세이프티 체인
+ros2 launch safety_bringup safety_chain.launch.py log_level:=info
+# (필요 시) 라이프사이클 노드 활성화
 ros2 lifecycle set /velocity_smoother configure
 ros2 lifecycle set /velocity_smoother activate
 ros2 lifecycle set /collision_monitor configure
 ros2 lifecycle set /collision_monitor activate
+
+# 5) 주행 명령 예시(teleop/nav)
+ros2 topic pub /cmd_vel_nav geometry_msgs/Twist '{linear: {x: 0.2}}' -r 10
 ```
+
+**네임스페이스(NS)**: `ns:=robot1` 인자를 런치에 넘기면 모든 토픽/파라미터가 NS 하위로 정렬됩니다.  
+YAML에서는 **절대 경로 대신 상대 토픽**을 사용해 NS 호환을 유지합니다(예: `scan` ⭕, `/scan` ❌).
 
 ---
 
-## 실행 및 검증 팁
-- **RQt**로 파싱된 토픽 실시간 확인
-- **제어 송신 테스트:**
+## 5) 센서 설정 요약 (`sensor_bringup/config/sensors.yaml`)
+- **LiDAR**
+  - `frame_id: laser_link`
+  - `topics: {in: scan_raw, out: scan}`
+  - `normalize:`
+    - `invert_cw_to_ccw: false`  (시뮬 데이터가 이미 CCW)
+    - `rotate_180_degrees: true` (시뮬 배열 기준 보상)
+- **IMU**: `frame_id: imu_link`, `topics: {pub_out: imu}`
+- **Camera**: `frame_id: camera_link`, `topics: {pub_out: image_raw}`  
+  - (필요 시) `camera_optical_frame` 명시, URDF/TF 정합 권장
+
+---
+
+## 6) Safety Chain 설정 개요 (`safety_bringup/config`)
+- **twist_mux.yaml**
+  - 입력: `cmd_vel_nav`(prio 1), `cmd_vel_teleop`(prio 2), `cmd_vel_emergency`(prio 3)
+  - 출력: `cmd_vel_mux`
+- **velocity_smoother.yaml**
+  - 입력: `cmd_vel_mux` → 출력: `cmd_vel_smooth`
+  - `OPEN_LOOP`, 가감속/속도 제한, timeout 등
+- **collision_monitor.yaml**
+  - 프레임: `base_frame_id=base_link`, `odom_frame_id=odom`
+  - 관측원: `observation_sources: [lidar_scan]`
+    - `lidar_scan: {type: scan, topic: scan, enabled: true}`
+  - 폴리곤: `polygons: [slow_zone_front, stop_zone_front, stop_zone_back]`
+    - `action_type: slowdown | stop`
+  - 전역 감속비: `slowdown_ratio: 0.5`  
+  - **주의**: Nav2 Humble에는 `use_slowdown`, `use_stop` 파라미터가 **존재하지 않습니다.**  
+    감속/정지는 **폴리곤의 `action_type`** 으로 결정됩니다.
+
+---
+
+## 7) 프레임 & 타임스탬프 정책
+- **헤더 타임스탬프**
+  - 파서 단계에서 수신 시각으로 `header.stamp` 설정
+  - 정규화 노드(예: `scan_normalizer`)는 **입력 스탬프를 그대로 전달**
+- **스캔 타이밍 필드**
+  - 시뮬 특성상 포인트별 지연이 없어 `scan_time`, `time_increment`는 **0**
+- **TF**
+  - 필수: `odom → base_link`
+  - 센서 프레임(`laser_link`/`imu_link`/`camera_link`) ↔ `base_link`는 고정 변환 사용 권장
+
+---
+
+## 8) 검증 방법
+- **rqt_plot**
+  - `/cmd_vel_nav/linear/x` → `/cmd_vel_smooth/linear/x` → `/cmd_vel/linear/x` 램프/계단 확인
+- **RViz**
+  - Fixed Frame=`odom`
+  - LiDAR: `/scan` 표시, `polygon_*` 토픽 추가(Transient Local)로 감시영역 확인
+- **토픽/스탬프 점검**
   ```bash
-  # WSL → 시뮬레이터 제어
-  ros2 topic pub /cmd_vel geometry_msgs/Twist '{linear: {x: 1.0}, angular: {z: 0.0}}' -1
+  ros2 topic echo -n 1 /scan header
+  ros2 topic echo -n 1 /imu   header
+  ros2 run tf2_tools view_frames  # (그래프 확인)
   ```
-- **PowerShell UDP 모니터링 예시 (7601):**
-  ```powershell
-  $u = New-Object System.Net.Sockets.UdpClient(7601)
-  $ep = New-Object System.Net.IPEndPoint([IPAddress]::Any,0)
-  while ($true) { $b = $u.Receive([ref]$ep); ($b | % { '{0:X2}' -f $_ }) -join ' ' }
-  ```
-- 방화벽: 1232, 7802, 8002, 8202, 8302, 9092, 9094, 7601, 7901, 8101 포트 UDP 인바운드 허용
-- **WSL ↔ Windows IP 설정**
-  - WSL에서 Windows는 `172.23.0.1`
-  - Windows에서 WSL은 `hostname -I` 로 확인되는 `172.23.x.x`
-  - WSL 재시작 시 IP가 바뀔 수 있음 → 시뮬레이터 송신 대상 재설정 필요
 
 ---
 
-## 레이아웃
-```
-ros2_ws/
-└── src/
-    ├── bridge_bringup/     # 통합 런치 & 중앙 YAML
-    ├── bridge_msgs/        # 공용 메시지
-    ├── safety_bringup/     # cmd_vel 출력
-    ├── state_estimator/    # Odometry 발행
-    ├── udp_raw_bridge/     # UDP 수신 → raw 토픽
-    ├── udp_parsers_cpp/    # raw → 구조화 메시지
-    └── udp_tx_bridge/      # ROS 토픽 → UDP 송신
-  docs/
-    ├── setup_manual.md     # 전체 세팅/검증 매뉴얼
-    └── project_progress_log_YYYY-MM-DD.md  # 작업 일지
-  README.md                 # (이 파일)
-```
-
----
-
-## 로드맵 (v2)
-- [x] **M0. 브릿지 안정화** — 센서 수신/파싱/제어 송신 통합 테스트 완료
-- [x] **M1. 오도메트리 파이프라인** — `/ego_status → /odom` + `tf(odom→base_link)`
-- [x] **M1.5a. Safety 체인 구축** — twist_mux → velocity_smoother → collision_monitor
-- [ ] **M1.5b. 센서 기반 감속/정지 구현**
-- [ ] **M2. 상태추정 고도화(EKF)** — `/wheel_odom`+`/imu` 융합
-- [ ] **M2.5. Lifecycle 자동화** — configure/activate 자동 실행
-- [ ] **M3. TF/URDF 정합** — 센서 프레임 트리 검증
-- [ ] **M4. 맵핑(SLAM)** — slam_toolbox 적용
-- [ ] **M5. Nav2 자율주행 기동**
+## 9) 로드맵
+- [x] **M0. 브릿지 안정화**
+- [x] **M1. 오도메트리(ego→odom)** + TF(odom→base_link)
+- [x] **M1.5a. Safety 체인 구축**
+- [x] **M1.5b. LiDAR 입력 기반 slowdown/stop 검증**
+- [ ] **M2.0. EKF** (ego_status + IMU 융합, `robot_localization`)
+- [ ] **M2.5. Lifecycle 자동화** (configure/activate 자동)
+- [ ] **M3. TF/URDF 정합 강화**
+- [ ] **M4. 맵핑(SLAM) — slam_toolbox**
+- [ ] **M5. Nav2 자율주행**
 - [ ] **M6. 커스텀 Path Tracker 플러그인**
 - [ ] **M7. FSM/BT 하이브리드 제어**
 - [ ] **M8. 물체 제어(Pick & Place)**
@@ -131,10 +161,9 @@ ros2_ws/
 
 ---
 
-## 라이선스
-MIT License
-
----
+## License
+MIT
 
 ## 출처
-- 원본 환경: [WellDone Simulator Repository](https://github.com/RkaB8888/SSAFY-Specialized-PJT-WellDone.git)
+- WellDone Simulator Repository (레거시)
+- Nav2 / ROS 2 Humble 문서

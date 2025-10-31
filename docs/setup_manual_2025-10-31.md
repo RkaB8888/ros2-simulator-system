@@ -1,4 +1,4 @@
-# 시뮬레이터 ↔ ROS2 브리지 셋업 매뉴얼 (업데이트: 2025-10-23)
+# 시뮬레이터 ↔ ROS2 브리지 셋업 매뉴얼 (업데이트: 2025-10-31)
 
 > 이 문서는 **새로운 PC**에서 본 프로젝트를 실행하기 위한 **기본 세팅 과정**을 정리합니다.  
 > ROS 2 **Humble** 설치부터 프로젝트 실행, **최초 통신 테스트**까지의 과정을 다룹니다.
@@ -148,9 +148,10 @@ $tx | ForEach-Object { New-NetFirewallRule -DisplayName "UDP In (ROS2 Bridge) $_
 ### 4-1. 패키지 역할 요약
 
 - **bridge_bringup**: 통합 런치/인자 허브. 모든 레이어(RAW→Parsers→Safety→TX)를 한 번에 실행합니다.
-- **safety_bringup** (신규): 세이프티 체인 런치/파라미터 패키지.
+- **safety_bringup**: 세이프티 체인 런치/파라미터 패키지.
 - **udp_raw_bridge**: Windows 시뮬 → UDP 수신 → `/..._raw` 퍼블리시.
 - **udp_parsers_cpp**: RAW → 구조화 토픽(ego, scan, imu 등) 변환.
+- **sensor_bringup** (신규): 센서 설정/정규화 패키지. `sensors.yaml`에 frame/topic 규약을 정의하고, `scan_normalizer`로 LiDAR 스캔을 CCW/180° 보정하여 표준 `/scan`으로 발행.
 - **udp_tx_bridge**: ROS2 토픽 → UDP 직렬화 송신.
 - **state_estimator**: `/ego_status` → `/odom` 및 TF(odom→base_link) 발행.
 - **bridge_msgs**: 프로젝트 커스텀 메시지.
@@ -235,9 +236,10 @@ ros2_ws/src
 ├─ bridge_bringup/
 │  ├─ config/system.wsl.yaml
 │  └─ launch/bridge.launch.py
-├─ safety_bringup/            # (신규) 세이프티 체인
-│  ├─ config/ (twist_mux.yaml, velocity_smoother.yaml, collision_monitor.yaml)
-│  └─ launch/safety_chain.launch.py
+├─ safety_bringup/ 
+├─ sensor_bringup/            # (신규) 센서 정규화
+│  ├─ config/ (sensors.yaml)
+│  └─ sensor_bringup.launch.py
 ├─ udp_raw_bridge/
 ├─ udp_parsers_cpp/
 ├─ udp_tx_bridge/
