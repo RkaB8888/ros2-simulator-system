@@ -12,16 +12,17 @@ class LidarParser : public rclcpp::Node {
 public:
   LidarParser() : rclcpp::Node("lidar_parser") {
     sub_ = create_subscription<std_msgs::msg::ByteMultiArray>(
-      "/lidar_raw", rclcpp::SensorDataQoS(),
+      "lidar_raw", rclcpp::SensorDataQoS(),
       std::bind(&LidarParser::onRaw, this, _1));
 
-    pub_ = create_publisher<sensor_msgs::msg::LaserScan>("/scan_raw", 10);
+    pub_ = create_publisher<sensor_msgs::msg::LaserScan>("scan_raw", 10);
 
     RCLCPP_INFO(get_logger(), "lidar_parser started");
   }
 
 private:
   void onRaw(const std_msgs::msg::ByteMultiArray::SharedPtr msg) {
+    const auto stamp = this->now();
     const auto &buf = msg->data;
 
     // 최소 길이 체크 (헤더 25바이트 + 데이터 2바이트 이상)
@@ -39,11 +40,8 @@ private:
     const int num_points = data_len / 3;
     if (num_points <= 0) return;
 
-    // 시간 정보
-    const auto now = this->now();
-
     sensor_msgs::msg::LaserScan scan;
-    scan.header.stamp = this->now();
+    scan.header.stamp = stamp;
     scan.header.frame_id = "laser_link";
 
     // 각도: 레거시 기본(0 시작, 360 포인트, inc=π/180)과 호환되되, N에 자동 적응

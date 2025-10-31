@@ -13,11 +13,11 @@ public:
   {
     // RAW: udp_raw_bridge 가 SensorDataQoS(BEST_EFFORT)로 퍼블리시 → 구독도 동일 QoS
     sub_ = create_subscription<std_msgs::msg::ByteMultiArray>(
-      "/camera_jpeg_raw", rclcpp::SensorDataQoS(),
+      "camera_jpeg_raw", rclcpp::SensorDataQoS(),
       std::bind(&CameraJpegParser::onRaw, this, _1));
 
     // 산출: 시각화/소비 편의상 RELIABLE depth 10
-    pub_ = create_publisher<sensor_msgs::msg::CompressedImage>("/image_jpeg/compressed", 10);
+    pub_ = create_publisher<sensor_msgs::msg::CompressedImage>("image_jpeg/compressed", 10);
 
     buffer_.reserve(kMaxBufferBytes);
     RCLCPP_INFO(get_logger(),
