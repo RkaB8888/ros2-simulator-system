@@ -32,6 +32,7 @@ public:
   // 콜백: RAW → 파싱
 private:
   void onRaw(const std_msgs::msg::ByteMultiArray::SharedPtr msg) {
+    const auto stamp = this->now(); // 수신 시점 스탬프 획득.
     const auto &buf = msg->data; // 편의상 바이트 벡터 참조.
 
     // 최소 길이: header(11)+len(4)+aux(12)+payload(32)
@@ -79,6 +80,8 @@ private:
 
     // 3) 상태 메시지 발행 (파싱 결과만 내보냄)
     bridge_msgs::msg::TurtlebotStatus ts;
+    ts.header.stamp = stamp;
+    ts.header.frame_id = "base_link";
     ts.twist.linear.x  = v_lin; // 선속도
     ts.twist.angular.z = v_ang; // 각속도
     ts.power_supply_status = batt_charge;
