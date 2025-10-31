@@ -60,7 +60,6 @@ public:
     x_ = 0.0;
     y_ = 0.0;
     yaw_ = deg2rad(initial_yaw_deg_);
-    last_state_stamp_ = now(); // 첫 입력이 올 때 갱신
 
     if (publish_rate_ > 0.0) {
       const auto period = std::chrono::duration<double>(1.0 / publish_rate_);
@@ -95,7 +94,13 @@ private:
     // msg.twist.linear.x: m/s, msg.twist.angular.z: rad/s (가정)
     out.vx_mps = msg.twist.linear.x * lin_scale_;
     out.wz_rps = msg.twist.angular.z * ang_scale_;
-    out.stamp  = now(); // 메시지에 stamp가 없으니 수신 시각 사용
+    
+    rclcpp::Time stamp_msg{msg.header.stamp};
+    const auto now_node = this->now();
+    if (stamp_msg.nanoseconds() == 0 || stamp_msg > now_node + rclcpp::Duration::from_seconds(0.1)) {
+      stamp_msg = now_node;
+    }
+    out.stamp = stamp_msg;
     out.valid  = true;
     return true;
   }
@@ -137,8 +142,12 @@ private:
   {
     if (!s.valid) return;
 
-    // 내부 상태 적분 업데이트
-    integrate(s);
+    // 첫 샘플이면 스냅만 맞추고 적분 건너뜀
+    if (last_state_stamp_.nanoseconds() == 0) {
+      last_state_stamp_ = s.stamp;
+    } else {
+      integrate(s);
+    }
 
     // 최신 속도 저장
     latest_ = s;
@@ -153,12 +162,16 @@ private:
   {
     if (!latest_.valid) return;
 
-    // 타이머 틱 사이 구간도 적분
-    Sample neutral = latest_;
-    neutral.stamp = now(); // 현재 시각까지 적분
-    integrate(neutral);
+    auto now_node = this->now();
+    if (last_state_stamp_.nanoseconds() == 0) {
+      last_state_stamp_ = now_node;
+    } else {
+      Sample neutral = latest_;
+      neutral.stamp = now_node;
+      integrate(neutral);
+    }
 
-    publishOdomAndTF(neutral.stamp, latest_.vx_mps, latest_.wz_rps);
+    publishOdomAndTF(now_node, latest_.vx_mps, latest_.wz_rps);
   }
 
   void publishOdomAndTF(const rclcpp::Time &stamp, double vx_mps, double wz_rps) const
