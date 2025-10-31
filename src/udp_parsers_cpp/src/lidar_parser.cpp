@@ -16,8 +16,6 @@ public:
       std::bind(&LidarParser::onRaw, this, _1));
 
     pub_ = create_publisher<sensor_msgs::msg::LaserScan>("/scan_raw", 10);
-    
-    last_stamp_ = this->now();
 
     RCLCPP_INFO(get_logger(), "lidar_parser started");
   }
@@ -43,13 +41,10 @@ private:
 
     // 시간 정보
     const auto now = this->now();
-    const double scan_time = (now - last_stamp_).seconds();
-    last_stamp_ = now;
 
     sensor_msgs::msg::LaserScan scan;
     scan.header.stamp = this->now();
-    // scan.header.stamp = now;
-    scan.header.frame_id = "velodyne";
+    scan.header.frame_id = "laser_link";
 
     // 각도: 레거시 기본(0 시작, 360 포인트, inc=π/180)과 호환되되, N에 자동 적응
     // N=360 이면 angle_increment = 2π/360 = π/180 (레거시와 동일)
@@ -62,11 +57,6 @@ private:
     scan.range_min = 0.0;
     scan.range_max = 10.0;
 
-    // 타이밍(레거시: 이전 프레임과의 시간차로 계산)
-    // scan.scan_time = scan_time > 0.0 ? static_cast<float>(scan_time) : 0.0f;
-    // scan.time_increment = (scan_time > 0.0)
-    //   ? static_cast<float>(scan_time / static_cast<double>(num_points))
-    //   : 0.0f;
     scan.scan_time = 0.0f;
     scan.time_increment = 0.0f;
 
@@ -99,7 +89,6 @@ private:
 
   rclcpp::Subscription<std_msgs::msg::ByteMultiArray>::SharedPtr sub_;
   rclcpp::Publisher<sensor_msgs::msg::LaserScan>::SharedPtr pub_;
-  rclcpp::Time last_stamp_;
 };
 
 int main(int argc, char **argv) {

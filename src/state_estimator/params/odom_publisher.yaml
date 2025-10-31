@@ -8,7 +8,7 @@ odom_publisher:
     publish_rate: 0.0          # 0.0이면 콜백마다 즉시 발행, >0이면 주기 발행(Hz)
     initial_yaw_deg: 0.0       # 시작 헤딩(도)
     linear_scale: 1.0          # 입력이 m/s라면 1.0, cm/s면 0.01
-    angular_scale: 2.222222      # 입력이 rad/s라면 1.0, deg/s면 0.01745329252
+    angular_scale: -2.222222      # 대략적인 값. Unity의 회전 방향과 일치시키기 위해 음수
     covariance:
       x: 0.02
       y: 0.02

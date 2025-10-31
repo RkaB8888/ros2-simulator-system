@@ -1,0 +1,86 @@
+# src/sensor_bringup/config/sensors.yaml
+
+# 공통 규칙:
+# - 좌표계: base_link 기준 (+X 전방, +Y 좌측, +Z 위)
+# - rpy_deg: [roll, pitch, yaw] in degrees (시뮬 값 그대로 입력)
+# - 런치에서 rpy_deg → 라디안 변환(권장). 변환이 없다면 rpy(rad)를 직접 기입.
+
+lidar:
+  - name: base_lidar
+    enabled: true
+    frame_id: laser_link
+    mount:
+      xyz_m:   [0.00, 0.00, 0.10]   # meters (x, y, z)
+      rpy_deg: [0.0, 0.0, 0.0]      # degrees (roll, pitch, yaw)
+    topics:
+      in:  scan_raw                 # 내부 논리명
+      out: scan                     # 다운스트림 표준 토픽(상대 경로 권장)
+    normalize:
+      enabled: true                 # CW→CCW, 배열 역순/각도 보정
+      invert_cw_to_ccw: false       # CW→CCW 회전 방향 변환(이미 CCW면 false)
+      rotate_180_degrees: true      # Unity 180도 회전 문제 보상
+    qos:
+      reliability: BEST_EFFORT
+      durability:  VOLATILE
+      history:     KEEP_LAST
+      depth:       10
+    noise:                         # 시뮬에서 표시용(현재 미사용)
+      enabled: false
+      gaussian_mean_m: 0.0
+      gaussian_stdev_pct: 0.0
+
+imu:
+  - name: base_imu
+    enabled: true
+    frame_id: imu_link
+    mount:
+      xyz_m:   [-0.01, 0.00, 0.19]
+      rpy_deg: [0.0, 0.0, 0.0]      # degrees (roll, pitch, yaw)
+    topics:
+      pub_out: imu/data
+    frame_rate_hz: 50               # 시뮬 IMU 설정(30 또는 50)
+    qos:
+      reliability: BEST_EFFORT
+      durability:  VOLATILE
+      history:     KEEP_LAST
+      depth:       20
+    noise:                           # 현재는 기록용(미사용)
+      bias_instability:
+        enabled: false
+        stdev:
+          accel_mps2: {x: 0.001, y: 0.001, z: 0.001}
+          gyro_rps:   {roll: 0.001, pitch: 0.001, yaw: 0.001}
+        corr_time_s:
+          accel: {x: 0.020, y: 0.020, z: 0.020}
+          gyro:  {roll: 0.020, pitch: 0.020, yaw: 0.020}
+      random_walk:
+        enabled: false
+        stdev:
+          accel_mps_h32: {x: 0.001, y: 0.001, z: 0.001}
+          gyro_rad_h32:  {roll: 0.001, pitch: 0.001, yaw: 0.001}
+      white_gaussian:
+        enabled: false
+        stdev:
+          vrw_mps_sqrt_h: {x: 0.001, y: 0.001, z: 0.001}
+          arw_rad_sqrt_h: {roll: 0.001, pitch: 0.001, yaw: 0.001}
+
+camera:
+  - name: front_cam
+    enabled: true
+    frame_id: camera_link
+    # ROS optical frame 규칙을 쓸 거면 optical_frame도 둘 수 있음
+    optical_frame: camera_optical_frame  # (선택)
+    mount:
+      xyz_m:   [0.00, 0.00, 0.19]
+      rpy_deg: [0.0, 0.0, 0.0]           # degrees (roll, pitch, yaw)
+    topics:
+      pub_out: image_raw
+    intrinsics:
+      width:  320
+      height: 240
+      fov_deg: 60               # 시뮬 입력(문서용). 실제 카메라정보는 따로 생성 필요.
+    qos:
+      reliability: BEST_EFFORT
+      durability:  VOLATILE
+      history:     KEEP_LAST
+      depth:       5
