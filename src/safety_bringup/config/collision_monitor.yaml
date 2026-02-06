@@ -20,6 +20,9 @@ collision_monitor:
     cmd_vel_in_topic:  "cmd_vel_smooth"
     cmd_vel_out_topic: "cmd_vel"
 
+    # 지연 허용 오차
+    transform_tolerance: 1.0
+
     # 소스 타임아웃 및 감속 비율 (센서 활성 시 적용)
     source_timeout: 0.5
     slowdown_ratio: 0.5

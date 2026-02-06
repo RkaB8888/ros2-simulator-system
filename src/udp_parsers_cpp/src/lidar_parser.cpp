@@ -15,7 +15,7 @@ public:
       "lidar_raw", rclcpp::SensorDataQoS(),
       std::bind(&LidarParser::onRaw, this, _1));
 
-    pub_ = create_publisher<sensor_msgs::msg::LaserScan>("scan_raw", 10);
+    pub_ = create_publisher<sensor_msgs::msg::LaserScan>("scan_raw", rclcpp::SensorDataQoS());
 
     RCLCPP_INFO(get_logger(), "lidar_parser started");
   }

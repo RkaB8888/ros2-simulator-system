@@ -16,8 +16,8 @@ public:
       "camera_jpeg_raw", rclcpp::SensorDataQoS(),
       std::bind(&CameraJpegParser::onRaw, this, _1));
 
-    // 산출: 시각화/소비 편의상 RELIABLE depth 10
-    pub_ = create_publisher<sensor_msgs::msg::CompressedImage>("image_jpeg/compressed", 10);
+    // 산출: 시각화/데이터가 무거우므로 Best Effort로 변경
+    pub_ = create_publisher<sensor_msgs::msg::CompressedImage>("image_jpeg/compressed", rclcpp::SensorDataQoS());
 
     buffer_.reserve(kMaxBufferBytes);
     RCLCPP_INFO(get_logger(),

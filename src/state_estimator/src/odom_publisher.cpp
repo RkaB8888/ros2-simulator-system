@@ -51,9 +51,9 @@ public:
     odom_pub_ = create_publisher<nav_msgs::msg::Odometry>("odom", 10);
     tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
 
-    // ---- Subscriber
+    // ---- Subscriber / 파서가 Reliable로 보내므로, 받는 쪽도 Reliable로 받아야 "놓치지 않고 적분" 가능
     ego_sub_ = create_subscription<EgoMsg>(
-      "ego_status", rclcpp::SensorDataQoS(),
+      "ego_status", 10,
       std::bind(&OdomPublisher::egoCallbackBridge, this, std::placeholders::_1));
 
     // 초기 상태

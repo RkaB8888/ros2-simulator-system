@@ -4,6 +4,8 @@ import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import LaserScan
 
+from rclpy.qos import qos_profile_sensor_data
+
 class ScanNormalizer(Node):
     def __init__(self):
         super().__init__('scan_normalizer')
@@ -14,8 +16,8 @@ class ScanNormalizer(Node):
         self.invert = self.declare_parameter('invert_cw_to_ccw', False).get_parameter_value().bool_value
         self.rotate_180 = self.declare_parameter('rotate_180_degrees', False).get_parameter_value().bool_value
 
-        self.sub = self.create_subscription(LaserScan, self.topic_in, self.cb, 10)
-        self.pub = self.create_publisher(LaserScan, self.topic_out, 10)
+        self.sub = self.create_subscription(LaserScan, self.topic_in, self.cb, qos_profile_sensor_data)
+        self.pub = self.create_publisher(LaserScan, self.topic_out, qos_profile_sensor_data)
         self.get_logger().info(
             f"ScanNormalizer: {self.topic_in} -> {self.topic_out} "
             f"(normalize={self.enable_norm}, invert={self.invert}, rotate_180={self.rotate_180})"
