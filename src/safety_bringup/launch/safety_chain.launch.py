@@ -3,6 +3,8 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
+from ament_index_python.packages import get_package_share_directory
+import os
 
 def generate_launch_description():
     ns = LaunchConfiguration('ns')
@@ -10,13 +12,12 @@ def generate_launch_description():
     log_level = DeclareLaunchArgument('log_level', default_value='info', description='log level')
 
     # yaml 경로
-    from ament_index_python.packages import get_package_share_directory
-    import os
     pkg_share = get_package_share_directory('safety_bringup')
     mux_yaml   = os.path.join(pkg_share, 'config', 'twist_mux.yaml')
     smooth_yaml= os.path.join(pkg_share, 'config', 'velocity_smoother.yaml')
     cm_yaml    = os.path.join(pkg_share, 'config', 'collision_monitor.yaml')
 
+    # 1. Twist Mux (일반 노드)
     twist_mux = Node(
         package='twist_mux',
         executable='twist_mux',
@@ -31,6 +32,7 @@ def generate_launch_description():
         ]
     )
 
+    # 2. Velocity Smoother (Lifecycle 노드)
     velocity_smoother = Node(
         package='nav2_velocity_smoother',
         executable='velocity_smoother',
@@ -38,8 +40,8 @@ def generate_launch_description():
         name='velocity_smoother',
         parameters=[smooth_yaml],
         remappings=[
-            ('cmd_vel', 'cmd_vel_mux'),
-            ('cmd_vel_smoothed', 'cmd_vel_smooth')
+            ('cmd_vel', 'cmd_vel_mux'), # 입력: Twist Mux의 출력
+            ('cmd_vel_smoothed', 'cmd_vel_smooth') # 출력: Monitor로 전달
         ],
         output='screen',
         arguments=[
@@ -48,6 +50,7 @@ def generate_launch_description():
         ]
     )
 
+    # 3. Collision Monitor (Lifecycle 노드)
     collision_monitor = Node(
         package='nav2_collision_monitor',
         executable='collision_monitor',
@@ -61,4 +64,17 @@ def generate_launch_description():
         ]
     )
 
-    return LaunchDescription([use_ns, log_level, twist_mux, velocity_smoother, collision_monitor])
+    # 4. Lifecycle Manager
+    lifecycle_manager = Node(
+        package='nav2_lifecycle_manager',
+        executable='lifecycle_manager',
+        name='lifecycle_manager_safety',
+        namespace=ns,
+        output='screen',
+        parameters=[
+            {'autostart': True}, # 실행 시 자동으로 Active 상태로 전환
+            {'node_names': ['velocity_smoother', 'collision_monitor']}
+        ]
+    )
+
+    return LaunchDescription([use_ns, log_level, twist_mux, velocity_smoother, collision_monitor, lifecycle_manager])

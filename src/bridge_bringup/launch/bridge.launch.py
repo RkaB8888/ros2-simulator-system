@@ -14,10 +14,24 @@ def generate_launch_description():
     # 통합 YAML 기본값 (환경별 파일로 교체 가능)
     default_cfg = _pkg_share('bridge_bringup', 'config', 'system.wsl.yaml')
 
+    # 1. RAW UDP (수신)
     raw_launch     = _pkg_share('udp_raw_bridge',    'launch', 'raw_6ports.launch.py')
+
+    # 2. Parsers (해석)
     parsers_launch = _pkg_share('udp_parsers_cpp',   'launch', 'parsers_all.launch.py')
-    tx_launch      = _pkg_share('udp_tx_bridge',     'launch', 'tx_all.launch.py')
+
+    # 3. Sensors (정규화) - Scan Normalizer
+    sensor_launch  = _pkg_share('sensor_bringup',    'launch', 'sensor_bringup.launch.py')
+
+    # 4. State Estimator (위치 추정) - Odom
+    odom_launch    = _pkg_share('state_estimator',   'launch', 'odom.launch.py')
+
+    # 5. Safety Chain (안전 장치 + Lifecycle Manager)
     safety_launch  = _pkg_share('safety_bringup',    'launch', 'safety_chain.launch.py')
+
+    # 6. UDP TX (송신)
+    tx_launch      = _pkg_share('udp_tx_bridge',     'launch', 'tx_all.launch.py')
+    
 
     return LaunchDescription([
         # 공통 네임스페이스(멀티 로봇 대비). 기본은 루트("")
@@ -52,6 +66,23 @@ def generate_launch_description():
                 'ns':      LaunchConfiguration('ns'), 
                 'respawn': LaunchConfiguration('respawn_parsers'),
                 'log_level':   LaunchConfiguration('log_level_raw'),
+            }.items(),
+        ),
+
+        # SENSORS 레이어
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(sensor_launch),
+            launch_arguments={
+                'ns': LaunchConfiguration('ns'),
+            }.items(),
+        ),
+
+        # ODOM 레이어
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(odom_launch),
+            launch_arguments={
+                'ns': LaunchConfiguration('ns'),
+                'log_level': LaunchConfiguration('log_level_raw'),
             }.items(),
         ),
 
