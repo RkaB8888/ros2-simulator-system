@@ -7,8 +7,10 @@ odom_publisher:
     max_dt_sec: 2.0
     publish_rate: 0.0          # 0.0이면 콜백마다 즉시 발행, >0이면 주기 발행(Hz)
     initial_yaw_deg: 0.0       # 시작 헤딩(도)
-    linear_scale: 1.0          # 입력이 m/s라면 1.0, cm/s면 0.01
-    angular_scale: -2.222222      # 대략적인 값. Unity의 회전 방향과 일치시키기 위해 음수
+    linear_scale: 1.0          # ego_status의 linear/x를 m/s로 변환
+    # [변경] 10바퀴 캘리브레이션 결과 적용 (2026-02-08)
+    # Target(62.83) / Measured(29.95) = 2.0979...
+    angular_scale: -2.098      # ego_status의 angular/z를 rad/s로 변환
     covariance:
       x: 0.02
       y: 0.02
