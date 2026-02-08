@@ -83,6 +83,8 @@ def generate_launch_description():
             launch_arguments={
                 'ns': LaunchConfiguration('ns'),
                 'log_level': LaunchConfiguration('log_level_raw'),
+                'ego_in': 'ego_status',
+                'odom_out': 'wheel/odom',
             }.items(),
         ),
 
