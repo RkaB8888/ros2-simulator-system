@@ -1,11 +1,11 @@
 # ROS 2 Simulator System (Humble, C++ / WSL)
 
-교육용 시뮬레이터(MORAI SIM) 기반 환경을 **ROS 2 Humble + C++ + WSL(리눅스)** 로 재구현한 프로젝트입니다.  
-Windows/Python(Eloquent) 시절의 레거시를 참고하되, **UDP I/O ↔ 파서 ↔ 브릿지 ↔ 세이프티 체인**을 현대화하고
-프레임·타임스탬프·QoS를 정돈하여 **재현 가능한 개발 베이스**를 제공합니다.
+교육용 시뮬레이터(MORAI SIM) 기반 환경을 **ROS 2 Humble + C++ + WSL(리눅스)** 로 재구현한 프로젝트입니다.  
+Windows/Python(Eloquent) 시절의 레거시를 참고하되, **UDP I/O ↔ 파서 ↔ 브릿지 ↔ 세이프티 체인 ↔ EKF 센서 퓨전**을 현대화하고
+안정적인 실시간 통신을 위한 **방어 로직(Anti-Lag)**을 탑재하여 **재현 가능한 개발 베이스**를 제공합니다.
 
 - 착수: 2025‑09‑27
-- 최신 마일스톤: **M1.5b 센서 기반 안전 제동(Stop/Slowdown) 검증 완료** — 2025‑11‑01
+- 최신 마일스톤: **M3. TF 정합 및 시스템 안정화 완료** — 2026‑02‑09
 
 > 🔗 레거시 참고: WellDone (Windows/Eloquent)  
 > https://github.com/RkaB8888/SSAFY-Specialized-PJT-WellDone.git
@@ -15,145 +15,115 @@ Windows/Python(Eloquent) 시절의 레거시를 참고하되, **UDP I/O ↔ 파�
 ## 1) 목표
 - Python(Eloquent, Windows) → **C++(Humble, Linux/WSL)** 전환
 - **중앙집중 YAML**로 네트워크/IP/포트 및 센서 설정 일원화
-- **Safety Chain 표준화**(twist_mux → velocity_smoother → collision_monitor)
-- 프레임/타임스탬프 정합으로 RViz/Nav2 경고 제거
-- 이후 SLAM/경로추종/FSM을 위한 기반 확보
+- **Safety Chain 표준화** (twist_mux → velocity_smoother → collision_monitor)
+- **정밀 위치 추정** (Wheel Odom + IMU → EKF Fusion)
+- **통신 안정화** (Windows Host Load로 인한 패킷 지연/버스트 방어)
 
 ---
 
 ## 2) 패키지 구조
-- **`bridge_bringup`**: 통합 런치 & 공용 설정(YAML). 모든 IP/포트 및 세이프티 토글 관리.
+- **`bridge_bringup`**: 통합 런치 & 공용 설정(YAML). EKF 및 Lifecycle Manager 포함 전체 실행.
 - **`udp_raw_bridge`**: 시뮬레이터 → ROS2 수신(RX). 각 UDP 포트를 바인딩해 raw 바이트를 퍼블리시.
-- **`udp_parsers_cpp`**: RAW 토픽을 ROS 메시지로 파싱(ego/env/iot/object/imu/lidar/camera).
-- **`udp_tx_bridge`**: ROS 토픽(`/cmd_vel`, `/hand_control`, `/iot_control`)을 **레거시와 동일한 UDP 프레이밍**으로 송신(TX).
-- **`safety_bringup`**: `twist_mux` → `nav2_velocity_smoother` → `nav2_collision_monitor` 체인 구성
-- **`sensor_bringup`** *(신규)*:
-  - 센서 공통 설정 `config/sensors.yaml`
-  - `scan_normalizer` 노드로 LiDAR 배열/프레임 보정
-  - 프레임 일관화: **LiDAR=`laser_link`, IMU=`imu_link`, Camera=`camera_link`**
-- **`state_estimator`**: `/ego_status` → `/odom` + `TF(odom→base_link)` 변환
-- **`bridge_msgs`**: 공용 메시지 정의
+- **`udp_parsers_cpp`**: RAW 토픽을 ROS 메시지로 파싱.
+  - `imu_parser`: IMU 버스트 방어 로직 적용.
+- **`udp_tx_bridge`**: ROS 토픽(`/cmd_vel` 등)을 UDP로 송신(TX).
+- **`safety_bringup`**: `twist_mux` → `nav2_velocity_smoother` → `nav2_collision_monitor` 체인 구성.
+- **`sensor_bringup`**: 센서 공통 설정 및 `scan_normalizer`(LiDAR 보정) 실행.
+- **`state_estimator`**: 
+  - `odom_publisher`: `/ego_status` → `/wheel/odom` 변환 (지연 방어 로직 포함).
+  - **`robot_localization` (EKF)**: `/wheel/odom` + `/imu` → `/odom` 융합 및 TF 발행.
+- **`bridge_msgs`**: 공용 메시지 정의.
 
 ---
 
-## 3) 현재 상태 (2025‑11‑01)
-- ✅ **M1.5b 완료: LiDAR → Collision Monitor 연동**
-  - `/scan` 기반 전방/후방 폴리곤 감시
-  - `action_type: slowdown/stop` 동작 검증, `slowdown_ratio` 반영 확인
-  - **타임스탬프 정합**으로 “미래 외삽” 경고 해소
-- ✅ **프레임 정리**
-  - LiDAR=`laser_link`, IMU=`imu_link`, Camera=`camera_link`
-  - (필요 시) `static_transform_publisher`로 센서→`base_link` 정합
-- ✅ **LiDAR 정규화**
-  - 시뮬 특성 보상: **180° 회전 옵션** 지원(`rotate_180_degrees: true`), **좌우 반전 비활성화**(`invert_cw_to_ccw: false`)
-  - `scan_time/time_increment = 0` 정책(시뮬 단일 스탬프 프레임)
-- 🔜 **다음 단계 (M2.0)**: `/ego_status` + `/imu` EKF 융합(odometry 고도화)
+## 3) 현재 상태 (2026‑02‑09)
+- ✅ **M2.0 완료: EKF 센서 퓨전**
+  - **EKF 적용**: `robot_localization` 패키지를 통해 Wheel Odom과 IMU 데이터 융합.
+  - **공분산 튜닝**: 센서 특성에 맞춘 Covariance(`0.02`~`0.05`) 설정.
+  - **Calibration**: Wheel Odom 회전 오차 보정 (오차율 6% → **0.15%**).
+- ✅ **M2.5 완료: Lifecycle 자동화**
+  - `nav2_lifecycle_manager`를 도입하여 `velocity_smoother`, `collision_monitor` 등 Nav2 노드를 **런치 파일 실행 시 자동으로 활성화(Configure -> Activate)** 하도록 개선.
+  - 수동 명령(`ros2 lifecycle set ...`) 불필요.
+- ✅ **M3 완료: TF 트리 정합**
+  - EKF가 `odom` → `base_link` TF를 전담.
+  - 센서 프레임(`laser`, `imu`)과 `base_link` 간의 관계 정립.
+- ✅ **Host Load Latency 해결 (Troubleshooting)**
+  - **원인**: Windows 호스트 부하 시 Hyper-V/WSL2 가상 네트워크 경로의 패킷 전달 지연(Stall).
+  - **대응**: 
+    - **Anti-Lag**: Odom 적분 시 `dt > 0.1s` 데이터 스킵 (텔레포트 방지).
+    - **Anti-Burst**: IMU `dt < 2ms` 데이터 드랍 (EKF 발산 방지).
 
 ---
 
 ## 4) 빠른 시작
-> 상세 설치/네트워크/검증 절차는 **`docs/setup_manual_2025-10-31.md`** 참조.
+> 상세 설치/네트워크/검증 절차는 **`docs/setup_manual_2026-02-09.md`** 참조.
 
 ```bash
 # 0) 빌드 & 환경설정
-colcon build
+colcon build --symlink-install
 source install/setup.bash
 
-# 1) 통합 브릿지 실행
+# 1) 통합 브릿지 실행 (EKF, Safety, Lifecycle 자동화 포함)
 ros2 launch bridge_bringup bridge.launch.py log_level_raw:=info
 
-# 2) 센서 브링업 (LiDAR 정규화 포함)
-ros2 launch sensor_bringup sensor_bringup.launch.py log_level:=info
-
-# 3) odom 발행
-ros2 launch state_estimator odom.launch.py
-
-# 4) 세이프티 체인
-ros2 launch safety_bringup safety_chain.launch.py log_level:=info
-# (필요 시) 라이프사이클 노드 활성화
-ros2 lifecycle set /velocity_smoother configure
-ros2 lifecycle set /velocity_smoother activate
-ros2 lifecycle set /collision_monitor configure
-ros2 lifecycle set /collision_monitor activate
-
-# 5) 주행 명령 예시(teleop/nav)
-ros2 topic pub /cmd_vel_nav geometry_msgs/Twist '{linear: {x: 0.2}}' -r 10
+# [팁] 충돌 방지 없이 실행하려면:
+# ros2 launch bridge_bringup bridge.launch.py enable_safety:=false
 ```
 
-**네임스페이스(NS)**: `ns:=robot1` 인자를 런치에 넘기면 모든 토픽/파라미터가 NS 하위로 정렬됩니다.  
-YAML에서는 **절대 경로 대신 상대 토픽**을 사용해 NS 호환을 유지합니다(예: `scan` ⭕, `/scan` ❌).
+**실행 확인:**
+- **TF 트리**: `map` -> `odom` -> `base_link` -> 센서 프레임 연결 확인.
+- **EKF 동작**: `ros2 topic echo /odometry/filtered` (또는 `/odom`).
+- **Safety**: 장애물 접근 시 로봇 감속/정지 확인.
 
 ---
 
-## 5) 센서 설정 요약 (`sensor_bringup/config/sensors.yaml`)
-- **LiDAR**
-  - `frame_id: laser_link`
-  - `topics: {in: scan_raw, out: scan}`
-  - `normalize:`
-    - `invert_cw_to_ccw: false`  (시뮬 데이터가 이미 CCW)
-    - `rotate_180_degrees: true` (시뮬 배열 기준 보상)
-- **IMU**: `frame_id: imu_link`, `topics: {pub_out: imu}`
-- **Camera**: `frame_id: camera_link`, `topics: {pub_out: image_raw}`  
-  - (필요 시) `camera_optical_frame` 명시, URDF/TF 정합 권장
+## 5) 시스템 아키텍처
+```text
+[Simulator] 
+    │ (UDP)
+    ▼
+[udp_raw_bridge] 
+    │ (Topic: *_raw)
+    ▼
+[udp_parsers_cpp] 
+    │ (Topic: scan_raw, ego_status, imu_raw)
+    │ (* Anti-Burst Logic applied to IMU)
+    ▼
+[sensor_bringup] / [state_estimator]
+    │ (Wheel Odom: Anti-Lag Logic applied)
+    │ (Fusion: Wheel Odom + IMU -> EKF)
+    │ (Topic: scan, odom)
+    ▼
+[safety_bringup] (TwistMux -> Smoother -> CollisionMonitor)
+    │ (Lifecycle Managed: Auto-Active)
+    │ (Topic: cmd_vel)
+    ▼
+[udp_tx_bridge] 
+    │ (UDP)
+    ▼
+[Simulator]
+```
 
 ---
 
-## 6) Safety Chain 설정 개요 (`safety_bringup/config`)
-- **twist_mux.yaml**
-  - 입력: `cmd_vel_nav`(prio 1), `cmd_vel_teleop`(prio 2), `cmd_vel_emergency`(prio 3)
-  - 출력: `cmd_vel_mux`
-- **velocity_smoother.yaml**
-  - 입력: `cmd_vel_mux` → 출력: `cmd_vel_smooth`
-  - `OPEN_LOOP`, 가감속/속도 제한, timeout 등
-- **collision_monitor.yaml**
-  - 프레임: `base_frame_id=base_link`, `odom_frame_id=odom`
-  - 관측원: `observation_sources: [lidar_scan]`
-    - `lidar_scan: {type: scan, topic: scan, enabled: true}`
-  - 폴리곤: `polygons: [slow_zone_front, stop_zone_front, stop_zone_back]`
-    - `action_type: slowdown | stop`
-  - 전역 감속비: `slowdown_ratio: 0.5`  
-  - **주의**: Nav2 Humble에는 `use_slowdown`, `use_stop` 파라미터가 **존재하지 않습니다.**  
-    감속/정지는 **폴리곤의 `action_type`** 으로 결정됩니다.
+## 6) 주요 이슈 해결 (Troubleshooting Log)
+**Q. 시뮬레이터가 렉 걸리면 로봇이 순간이동해요.** **A.** Windows 호스트 부하로 인해 WSL2로 들어오는 패킷이 밀렸다가 한꺼번에 들어오는 현상입니다.  
+`odom_publisher`에 **`dt > 0.1s` 스킵 로직**을 적용하여, 지연된 데이터로 인한 위치 튀는 현상을 방어했습니다.
+
+**Q. 회전이 실제보다 덜/더 돌아요.** **A.** 시뮬레이터의 각속도 단위가 표준(rad/s)과 달라서 발생한 문제입니다.  
+10회전 실험을 통해 보정 계수(`angular_scale: -2.098`)를 산출하여 적용했습니다.
 
 ---
 
-## 7) 프레임 & 타임스탬프 정책
-- **헤더 타임스탬프**
-  - 파서 단계에서 수신 시각으로 `header.stamp` 설정
-  - 정규화 노드(예: `scan_normalizer`)는 **입력 스탬프를 그대로 전달**
-- **스캔 타이밍 필드**
-  - 시뮬 특성상 포인트별 지연이 없어 `scan_time`, `time_increment`는 **0**
-- **TF**
-  - 필수: `odom → base_link`
-  - 센서 프레임(`laser_link`/`imu_link`/`camera_link`) ↔ `base_link`는 고정 변환 사용 권장
-
----
-
-## 8) 검증 방법
-- **rqt_plot**
-  - `/cmd_vel_nav/linear/x` → `/cmd_vel_smooth/linear/x` → `/cmd_vel/linear/x` 램프/계단 확인
-- **RViz**
-  - Fixed Frame=`odom`
-  - LiDAR: `/scan` 표시, `polygon_*` 토픽 추가(Transient Local)로 감시영역 확인
-- **토픽/스탬프 점검**
-  ```bash
-  ros2 topic echo -n 1 /scan header
-  ros2 topic echo -n 1 /imu   header
-  ros2 run tf2_tools view_frames  # (그래프 확인)
-  ```
-
----
-
-## 9) 로드맵
-- [x] **M0. 브릿지 안정화**
-- [x] **M1. 오도메트리(ego→odom)** + TF(odom→base_link)
-- [x] **M1.5a. Safety 체인 구축**
-- [x] **M1.5b. LiDAR 입력 기반 slowdown/stop 검증**
-- [ ] **M2.0. EKF** (ego_status + IMU 융합, `robot_localization`)
-- [ ] **M2.5. Lifecycle 자동화** (configure/activate 자동)
-- [ ] **M3. TF/URDF 정합 강화**
-- [ ] **M4. 맵핑(SLAM) — slam_toolbox**
-- [ ] **M5. Nav2 자율주행**
+## 7) 로드맵
+- [x] **M0. 브릿지 안정화 (C++ Porting)**
+- [x] **M1. 오도메트리 기본 구현**
+- [x] **M1.5. Safety 체인 구축 (Nav2 Stack)**
+- [x] **M2.0. EKF 센서 퓨전 & 시스템 안정화 (Anti-Lag)**
+- [x] **M2.5. Lifecycle 자동화 (Launch 통합)**
+- [x] **M3. TF/URDF 정합 (EKF 기반)**
+- [ ] **M4. 맵핑(SLAM) — Cartographer / SLAM Toolbox**
+- [ ] **M5. Nav2 자율주행 (Path Planning/Following)**
 - [ ] **M6. 커스텀 Path Tracker 플러그인**
 - [ ] **M7. FSM/BT 하이브리드 제어**
 - [ ] **M8. 물체 제어(Pick & Place)**

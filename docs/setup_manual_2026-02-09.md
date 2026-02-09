@@ -39,13 +39,14 @@ source ~/.bashrc
 
 ### 2-3. 프로젝트 필수 의존성 (Critical)
 
-Nav2 스택 및 Lifecycle 관리를 위한 필수 패키지입니다. **설치되지 않을 경우 시스템이 실행되지 않습니다.**
+Nav2 스택, Lifecycle 관리, **위치 추정(EKF)**을 위한 필수 패키지입니다. **설치되지 않을 경우 시스템이 실행되지 않습니다.**
 
 ```bash
 sudo apt install -y ros-humble-twist-mux \
                     ros-humble-nav2-velocity-smoother \
                     ros-humble-nav2-collision-monitor \
-                    ros-humble-nav2-lifecycle-manager
+                    ros-humble-nav2-lifecycle-manager \
+                    ros-humble-robot-localization
 ```
 
 ### 2-4. 디버깅 및 시각화 도구 (Recommended)
@@ -57,7 +58,9 @@ sudo apt install -y ros-humble-rviz2 \
                     ros-humble-rqt \
                     ros-humble-rqt-common-plugins \
                     ros-humble-rqt-image-view \
-                    ros-humble-rqt-plot
+                    ros-humble-rqt-plot \
+                    ros-humble-plotjuggler-ros \
+                    ros-humble-rosbag2-storage-mcap
 ```
 
 ---
@@ -129,7 +132,7 @@ udp_tx_cmd_vel:
 
 ## 5. 실행 (Usage)
 
-통합 런치 파일을 통해 통신, 센서 처리, 안전 제어 노드를 일괄 실행합니다.
+통합 런치 파일을 통해 통신, 센서 처리, EKF 위치 추정, 안전 제어 노드를 일괄 실행합니다.
 
 ```bash
 # 1) 환경 변수 설정
@@ -171,7 +174,7 @@ ros2 topic pub /cmd_vel_nav geometry_msgs/Twist '{linear: {x: 0.1}}' -r 10
 | **udp_raw_bridge** | UDP 패킷 송수신 | Best Effort |
 | **udp_parsers_cpp** | 바이너리 데이터 파싱 | Optimized C++ |
 | **sensor_bringup** | LiDAR 정규화 및 TF 관리 | Scan Normalizer |
-| **state_estimator** | Odometry 적분 및 위치 추정 | Reliable |
+| **state_estimator** | Odometry 적분 및 **EKF 센서 퓨전** | Robot Localization |
 | **safety_bringup** | 속도 평활화 및 충돌 방지 | Nav2 Based |
 
 ### 7-2. QoS 정책
@@ -191,9 +194,10 @@ ros2 topic pub /cmd_vel_nav geometry_msgs/Twist '{linear: {x: 0.1}}' -r 10
     │ (Topic: *_raw)
     ▼
 [udp_parsers_cpp] 
-    │ (Topic: scan_raw, ego_status)
+    │ (Topic: scan_raw, ego_status, imu_raw)
     ▼
 [sensor_bringup] / [state_estimator]
+    │ (Wheel Odom + IMU -> EKF Fusion)
     │ (Topic: scan, odom)
     ▼
 [safety_bringup] (TwistMux -> Smoother -> CollisionMonitor)
