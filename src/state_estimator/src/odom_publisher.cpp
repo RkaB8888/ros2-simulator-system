@@ -34,7 +34,7 @@ public:
     frame_id_        = declare_parameter<std::string>("frame_id", "odom"); // odom 프레임
     child_frame_id_  = declare_parameter<std::string>("child_frame_id", "base_link"); // 로봇 프레임
     publish_tf_      = declare_parameter<bool>("publish_tf", true); // TF 발행 여부
-    max_dt_sec_      = declare_parameter<double>("max_dt_sec", 0.2);     // 입력 타임스탬프 점프 보호(초)
+
     publish_rate_    = declare_parameter<double>("publish_rate", 0.0);   // 0이면 콜백마다 발행
     initial_yaw_deg_  = declare_parameter<double>("initial_yaw_deg", 0.0); // Twist-only 시작 각도
     // TurtlebotStatus는 SI 단위(m/s, rad/s)라고 가정
@@ -51,9 +51,9 @@ public:
     odom_pub_ = create_publisher<nav_msgs::msg::Odometry>("odom", 10);
     tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
 
-    // ---- Subscriber / 파서가 Reliable로 보내므로, 받는 쪽도 Reliable로 받아야 "놓치지 않고 적분" 가능
+    // ---- Subscriber / 밀린 데이터를 과감히 버리고 최신 데이터를 받습니다.
     ego_sub_ = create_subscription<EgoMsg>(
-      "ego_status", 10,
+      "ego_status", rclcpp::SensorDataQoS(),
       std::bind(&OdomPublisher::egoCallbackBridge, this, std::placeholders::_1));
 
     // 초기 상태
@@ -120,15 +120,17 @@ private:
       // 시간이 역행하면 무시하고 now로 보정
       dt = 0.0;
       last_state_stamp_ = now();
-    } else if (dt > max_dt_sec_) {
-      // 과도하게 긴 간격은 클램프
-      RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 2000,
-        "Large dt=%.3f s (> %.3f). Clamping to limit.", dt, max_dt_sec_);
-      dt = max_dt_sec_;
-      last_state_stamp_ = s.stamp;
-    } else {
-      last_state_stamp_ = s.stamp;
+      return;
     }
+
+    // 지연시간 동안의 '추측 주행'은 너무 위험하므로 포기(Skip)합니다.
+    if (dt > 0.1) {
+       RCLCPP_WARN(get_logger(), "Lag (dt=%.3f s). Skipping integration.", dt);
+       last_state_stamp_ = s.stamp; 
+       return; 
+    }
+
+    last_state_stamp_ = s.stamp;
 
     // 2D 비고: 로봇 헤딩(yaw_) 기준 전진
     // 간단한 전진 오일러 적분
@@ -192,14 +194,28 @@ private:
     odom.pose.pose.orientation.z = q.z();
     odom.pose.pose.orientation.w = q.w();
 
-    // 초기 공분산(간단값)
+    // Pose Covariance (EKF 설정에서 x, y, yaw를 false로 하면 무시되지만 형식상 채움)
     for (double &c : odom.pose.covariance) c = 0.0;
     odom.pose.covariance[0]  = pose_cov_x_;
     odom.pose.covariance[7]  = pose_cov_y_;
     odom.pose.covariance[35] = pose_cov_yaw_;
 
+    // Twist (속도) 채우기
     odom.twist.twist.linear.x  = vx_mps;
+    odom.twist.twist.linear.y  = 0.0;    // 명시적으로 0.0 대입 (구조적 제약)
     odom.twist.twist.angular.z = wz_rps;
+
+    // Twist Covariance 추가
+    // 초기화
+    for (double &c : odom.twist.covariance) c = 0.0;
+    // EKF에서 사용하는 값들에 대해 공분산 설정
+    // 값이 작을수록 "이 센서 값을 강하게 믿는다"는 뜻
+    // 1) Linear X (전진 속도): 적당히 신뢰 (0.02)
+    odom.twist.covariance[0] = 0.02;
+    // 2) Linear Y (횡 속도): "0"이라는 사실을 매우 강하게 신뢰 (0.001 ~ 0.02)
+    odom.twist.covariance[7] = 0.02;
+    // 3) Angular Z (회전 속도): EKF에선 안 쓰지만(false), 형식상 채움
+    odom.twist.covariance[35] = 0.04;
 
     odom_pub_->publish(odom);
 
@@ -224,7 +240,7 @@ private:
   std::string frame_id_;
   std::string child_frame_id_;
   bool publish_tf_{true};
-  double max_dt_sec_{0.2};
+
   double publish_rate_{0.0};  // 0 → 콜백마다
   double initial_yaw_deg_{0.0};   // 시작 헤딩(도)
   double lin_scale_{1.0};         // 선속 스케일
@@ -235,6 +251,7 @@ private:
 
   // State (적분 기반)
   double x_{0.0}, y_{0.0}, yaw_{0.0};
+
   rclcpp::Time last_state_stamp_;
   Sample latest_;
 
