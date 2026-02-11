@@ -122,12 +122,12 @@ ros2 launch bridge_bringup bridge.launch.py log_level_raw:=info
 - [x] **M2.0. EKF 센서 퓨전 & 시스템 안정화 (Anti-Lag)**
 - [x] **M2.5. Lifecycle 자동화 (Launch 통합)**
 - [x] **M3. TF/URDF 정합 (EKF 기반)**
-- [ ] **M4. 맵핑(SLAM) — Cartographer / SLAM Toolbox**
-- [ ] **M5. Nav2 자율주행 (Path Planning/Following)**
-- [ ] **M6. 커스텀 Path Tracker 플러그인**
-- [ ] **M7. FSM/BT 하이브리드 제어**
-- [ ] **M8. 물체 제어(Pick & Place)**
-- [ ] **M9. 시나리오 회귀 테스트**
+- [ ] **M4. 맵핑(SLAM) — SLAM Toolbox**
+- [ ] **M5. 정밀 측위(AMCL) 및 기본 주행(Nav2)**
+- [ ] **M6. 시스템 슈퍼바이저 (FSM + BT)**
+- [ ] **M7. 물체 제어 (Pick & Place)**
+- [ ] **M8. 제어 성능 고도화 (Optimization)**
+- [ ] **M9. 통합 회귀 테스트**
 
 ---
 
