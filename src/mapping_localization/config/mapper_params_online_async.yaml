@@ -1,0 +1,128 @@
+# src/mapping_localization/config/mapper_params_online_async.yaml
+slam_toolbox:
+  ros__parameters:
+
+    # --------------------------------------------------------------------
+    # 1. 플러그인 및 솔버 설정 (Solver Params)
+    # SLAM 그래프 최적화를 담당하는 수학적 알고리즘 설정입니다.
+    # --------------------------------------------------------------------
+    solver_plugin: solver_plugins::CeresSolver
+    ceres_linear_solver: SPARSE_NORMAL_CHOLESKY
+    # ceres_num_threads: 8
+    ceres_preconditioner: SCHUR_JACOBI
+    ceres_trust_strategy: LEVENBERG_MARQUARDT
+    ceres_dogleg_type: TRADITIONAL_DOGLEG
+    ceres_loss_function: None
+
+    # --------------------------------------------------------------------
+    # 2. ROS 프레임 및 토픽 설정 (ROS Parameters)
+    # [중요] 우리 로봇의 TF 트리 이름과 반드시 일치해야 합니다.
+    # --------------------------------------------------------------------
+    odom_frame: odom
+    map_frame: map
+    base_frame: base_link       # base_footprint -> base_link
+    scan_topic: /scan           # 라이다 토픽 이름
+    use_map_saver: true         # 맵 저장 기능 활성화
+    mode: mapping               # 모드: mapping (지도 작성) vs localization (위치 추정)
+
+    # --------------------------------------------------------------------
+    # 3. 초기 위치 설정 (Initial Pose)
+    # 지도를 이어서 그리거나 특정 위치에서 시작할 때 사용합니다. (주석 유지)
+    # --------------------------------------------------------------------
+    # map_file_name: test_steve
+    # map_start_pose: [0.0, 0.0, 0.0]
+    # map_start_at_dock: true
+
+    # --------------------------------------------------------------------
+    # 4. 시스템 성능 및 주기 설정 (System & Performance)
+    # --------------------------------------------------------------------
+    debug_logging: false        # 디버그 로그 출력 여부 (false 권장)
+    throttle_scans: 1           # 스캔 데이터를 몇 개마다 처리할지 (1=모두 처리)
+    
+    # map->odom TF 발행 주기 (초)
+    # 0.02(50Hz)는 너무 빨라 WSL 부하가 생길 수 있어 0.05(20Hz)로 조정함
+    transform_publish_period: 0.05 
+
+    # 지도 갱신 주기 (초)
+    # 공식값 5.0초는 시뮬레이터에서 너무 답답하므로 1.0초로 단축
+    map_update_interval: 1.0    
+    
+    resolution: 0.05            # 지도 해상도 (5cm)
+    restamp_tf: false           # TF 타임스탬프 재설정 여부 (보통 false)
+    
+    min_laser_range: 0.0        # 이 거리보다 가까운 센서 데이터 무시
+    max_laser_range: 20.0       # 이 거리보다 먼 센서 데이터 무시 (센서 스펙 맞춤)
+    
+    # 스캔 처리 최소 시간 간격 (초)
+    # 0.5초는 너무 느려 시뮬레이션 부자연스러움 -> 0.1초로 조정
+    minimum_time_interval: 0.1  
+    
+    transform_timeout: 0.2      # TF 변환 대기 시간 제한
+    tf_buffer_duration: 30.0    # TF 버퍼 저장 시간
+    stack_size_to_use: 40000000 # 대형 맵 처리를 위한 메모리 스택 크기
+    enable_interactive_mode: true # Rviz에서 상호작용 기능 활성화
+
+    # --------------------------------------------------------------------
+    # 5. 일반 매핑 파라미터 (General Parameters)
+    # 키프레임(Keyframe) 생성 기준 및 스캔 매칭 기본 설정
+    # --------------------------------------------------------------------
+    use_scan_matching: true     # 스캔 매칭(위치 보정) 사용 여부
+    use_scan_barycenter: true   # 스캔 포인트들의 중심점 사용 여부 (안정성 향상)
+    
+    # 키프레임 생성 기준: 0.5m 이동하거나 0.5rad 회전할 때마다 노드 추가
+    minimum_travel_distance: 0.5
+    minimum_travel_heading: 0.5
+    
+    # 키프레임 기준을 엄격하게 체크할지 여부
+    check_min_dist_and_heading_precisely: false 
+    
+    scan_buffer_size: 10        # 스캔 데이터 버퍼 크기
+    scan_buffer_maximum_scan_distance: 10.0 # 버퍼에 저장할 최대 거리
+    
+    link_match_minimum_response_fine: 0.1   # 링크 매칭 최소 응답값
+    link_scan_maximum_distance: 1.5         # 링크 스캔 최대 거리
+    
+    # --------------------------------------------------------------------
+    # 6. 루프 클로저 설정 (Loop Closure)
+    # 한 바퀴 돌아 제자리로 왔을 때 오차를 수정하는 기능
+    # --------------------------------------------------------------------
+    do_loop_closing: true       # 루프 클로저 사용 (필수)
+    loop_search_maximum_distance: 3.0       # 루프 탐색 최대 거리
+    loop_match_minimum_chain_size: 10       # 루프 매칭 최소 체인 크기
+    loop_match_maximum_variance_coarse: 3.0 # 매칭 허용 분산 (대략적)
+    loop_match_minimum_response_coarse: 0.35 # 매칭 최소 응답 (대략적)
+    loop_match_minimum_response_fine: 0.45   # 매칭 최소 응답 (정밀)
+
+    # --------------------------------------------------------------------
+    # 7. 상관관계 스캔 매칭 설정 (Correlation Parameters)
+    # 스캔 매칭 시 탐색 범위 (CPU 부하와 관련됨)
+    # --------------------------------------------------------------------
+    correlation_search_space_dimension: 0.5 # 탐색 공간 크기 (미터)
+    correlation_search_space_resolution: 0.01 # 탐색 분해능 (미터)
+    correlation_search_space_smear_deviation: 0.1 # 편차 허용 범위
+
+    # --------------------------------------------------------------------
+    # 8. 루프 클로저 스캔 매칭 설정 (Loop Closure Parameters)
+    # 루프 클로저 시 탐색 범위 (더 넓게 봄)
+    # --------------------------------------------------------------------
+    loop_search_space_dimension: 8.0        # 탐색 공간 크기 (8m)
+    loop_search_space_resolution: 0.05      # 분해능
+    loop_search_space_smear_deviation: 0.03 # 편차
+
+    # --------------------------------------------------------------------
+    # 9. 스캔 매처 상세 설정 (Scan Matcher Parameters)
+    # 최적화 과정에서 거리나 각도 오차에 대한 페널티(벌점) 부여
+    # --------------------------------------------------------------------
+    distance_variance_penalty: 0.5      # 거리 분산 페널티
+    angle_variance_penalty: 1.0         # 각도 분산 페널티
+
+    fine_search_angle_offset: 0.00349   # 정밀 검색 각도 범위 (라디안)
+    coarse_search_angle_offset: 0.349   # 대략 검색 각도 범위 (라디안)
+    coarse_angle_resolution: 0.0349     # 대략 검색 각도 분해능
+    
+    minimum_angle_penalty: 0.9          # 최소 각도 페널티
+    minimum_distance_penalty: 0.5       # 최소 거리 페널티
+    
+    use_response_expansion: true        # 응답 확장 사용 (탐색 범위 유동적 조절)
+    min_pass_through: 2                 # 최소 히트 수 (노이즈 필터링 역할)
+    occupancy_threshold: 0.1            # 점유 임계값 (이 값 이상이면 장애물)
