@@ -1,12 +1,13 @@
-# ROS 2 자율 프로세스 설계 구조 & 작업 순서 (큰 줄기) — v3
+# ROS 2 자율 프로세스 설계 구조 & 작업 순서 (큰 줄기) — v4
 
 작성일: 2026-02-12 (Updated)
 목적: **전체 프로젝트의 상태와 향후 로드맵을 추적**합니다. 세부 작업은 별도 대화방에서 진행하며, 이 문서는 프로젝트의 **Source of Truth**로 활용합니다.
 
-## v3 변경 요약
-- **완료된 마일스톤 반영**: M0(브릿지) ~ M3(TF/EKF) 구현 완료 명시.
-- **시스템 구조 최신화**: **Anti-Lag/Anti-Burst** 방어 로직 및 **EKF 센서 퓨전** 구조 반영.
-- **로드맵 전면 개편**: 기술 나열식에서 **기능 완성(Feature Complete)** 중심의 Phase 1~3 구조로 변경.
+## v4 변경 요약 (2026-02-13)
+- **M4(맵핑) 완료**: SLAM Toolbox 적용 및 정밀 지도(`map_test.pgm`) 확보 완료.
+- **실행 아키텍처 재정립**: **Base(Bridge)**와 **App(Mapping/Nav)**의 **Layer 분리** 구조 확정.
+  - 기존: 런치 파일 하나로 통일 (All-in-One)
+  - 변경: T1(하드웨어) + T2(응용 프로그램) 분리 실행 (Odom 유지 및 재사용성 증대)
 
 ---
 
@@ -54,13 +55,14 @@
 - **`udp_parsers_cpp`**: 데이터 파싱 (IMU Burst 방어 포함).
 - **`sensor_bringup`**: 센서(`scan`, `imu`) 관련 설정 및 전처리.
 - **`state_estimator`**: 
-  - `odom_publisher`: Wheel Odom 발행 (Lag 방어).
-  - `robot_localization`: EKF 퓨전 (Odom + IMU).
+  - `odom_publisher` (Lag 방어), `robot_localization` (EKF)
+- **`mapping_localization`** (New): 
+  - SLAM Toolbox 런치(Hardware 분리형) 및 파라미터(WSL2 최적화).
 - **`safety_bringup`**: 
   - `velocity_smoother` → `twist_mux` → `collision_monitor` 체인 구성.
 
-### 🚧 예정됨 (Planned for M4~)
-- **`mapping_localization`** (예정): SLAM 및 AMCL 파라미터/런치.
+### 🚧 예정됨 (Planned for M5~)
+- **`mapping_localization`** (예정): AMCL 파라미터/런치.
 - **`task_manager`** (예정): FSM 및 BT 관련 로직.
 
 ---
@@ -89,9 +91,9 @@
 - [x] **M3. 시스템 최적화**: Anti-Lag(Windows 부하 방어), Lifecycle 자동화.
 
 ### 🚧 Phase 1: 환경 인지 및 기본 주행 (진행 중)
-- [ ] **M4. 맵핑 (Mapping) — SLAM Toolbox**
+- [x] **M4. 맵핑 (Mapping) — SLAM Toolbox** (완료)
     - **도구**: `slam_toolbox` (async)
-    - **수락 기준**: 전체 맵 Loop Closure 완료, 왜곡 없는 `map.yaml` 저장 및 로드.
+    - **결과**: Loop Closure가 적용된 고정밀 지도(`map_test`) 확보 및 Gitignore 처리.
 - [ ] **M5. 정밀 측위 및 기본 주행 (Localization & Basic Nav)**
     - **도구**: `amcl`, `nav2_controller` (RPP/MPPI)
     - **수락 기준**: 
@@ -115,14 +117,18 @@
 
 ---
 
-## 6. 런치/파라미터 구성 가이드
-- **`bridge_bringup/bridge.launch.py`**: 하드웨어/센서/Safety/EKF **전체 실행**.
-- **`mapping.launch.py` (New)**: 브릿지 + SLAM Toolbox 실행.
-- **`navigation.launch.py` (New)**: 브릿지 + Map Server + AMCL + Nav2 실행.
+## 6. 런치/파라미터 구성 가이드 (Updated)
+**계층형 실행 전략 (Layered Execution Strategy)**
+- **Tier 1: Base Layer (Always On)**
+  - **`bridge_bringup/bridge.launch.py`**: 하드웨어/센서/Safety/EKF/Tf 실행. (절대 끄지 않음)
+- **Tier 2: Application Layer (Select One)**
+  - **`mapping.launch.py`**: SLAM Toolbox 실행. (Bridge 포함 X)
+  - **`navigation.launch.py`** (예정): Map Server + AMCL + Nav2 실행. (Bridge 포함 X)
 
 ---
 
 ## 7. Next Action Item
-- **[M4] 맵핑 (SLAM Toolbox)**
-  - `slam_toolbox` 패키지 의존성 설치 및 `mapper_params_online_async.yaml` 작성.
-  - 런치 파일 생성 후 시뮬레이터 수동 주행으로 맵 따기.
+- **[M5] 정밀 측위 및 주행 (Navigation)**
+  - `nav2_bringup` 패키지 분석 및 `navigation.launch.py` (Tier 2) 생성.
+  - 저장된 지도(`map_test`)를 불러오는 Map Server 구성.
+  - AMCL 파라미터 튜닝 및 초기 위치 추정(Localization) 테스트.

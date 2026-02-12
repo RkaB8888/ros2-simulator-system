@@ -39,14 +39,16 @@ source ~/.bashrc
 
 ### 2-3. 프로젝트 필수 의존성 (Critical)
 
-Nav2 스택, Lifecycle 관리, **위치 추정(EKF)**을 위한 필수 패키지입니다. **설치되지 않을 경우 시스템이 실행되지 않습니다.**
+Nav2 스택, Lifecycle 관리, **위치 추정(EKF)** 및 **SLAM Mapping**을 위한 필수 패키지입니다. **설치되지 않을 경우 시스템이 실행되지 않습니다.**
 
 ```bash
 sudo apt install -y ros-humble-twist-mux \
                     ros-humble-nav2-velocity-smoother \
                     ros-humble-nav2-collision-monitor \
                     ros-humble-nav2-lifecycle-manager \
-                    ros-humble-robot-localization
+                    ros-humble-robot-localization \
+                    ros-humble-slam-toolbox \
+                    ros-humble-nav2-map-server
 ```
 
 ### 2-4. 디버깅 및 시각화 도구 (Recommended)
@@ -132,17 +134,37 @@ udp_tx_cmd_vel:
 
 ## 5. 실행 (Usage)
 
-통합 런치 파일을 통해 통신, 센서 처리, EKF 위치 추정, 안전 제어 노드를 일괄 실행합니다.
+본 프로젝트는 **계층형(Layered) 실행 구조**를 따릅니다. 하드웨어와 응용 프로그램을 분리하여 안정성을 높였습니다.
+
+### 5-1. Tier 1: 하드웨어 및 센서 (Base Layer)
+로봇의 센서, 모터, EKF, 안전 장치를 구동합니다. **항상 켜져 있어야 합니다.**
 
 ```bash
-# 1) 환경 변수 설정
+# 터미널 1
 source ~/ros2_ws/install/setup.bash
-
-# 2) 메인 런치 실행
 ros2 launch bridge_bringup bridge.launch.py log_level_raw:=info
 ```
+> **확인**: `lifecycle_manager`가 모든 노드를 `Active` 상태로 만듭니다.
 
-> **참고**: `lifecycle_manager`가 포함되어 있어, 실행 후 자동으로 모든 노드가 활성화(Active) 상태로 전환됩니다.
+### 5-2. Tier 2: 응용 프로그램 (Application Layer)
+목적에 따라 아래 중 **하나만 선택**하여 실행합니다.
+
+**옵션 A: 지도 작성 (Mapping Mode)**
+```bash
+# 터미널 2
+source ~/ros2_ws/install/setup.bash
+ros2 launch mapping_localization mapping.launch.py
+```
+* **기능**: SLAM Toolbox를 이용해 지도를 작성합니다.
+* **종료**: 지도를 다 그린 후 `Ctrl+C`로 종료합니다.
+
+**옵션 B: 지도 저장 (Save Map)**
+지도를 다 그린 후, 별도의 터미널에서 실행하여 파일로 저장합니다.
+```bash
+# 터미널 3
+mkdir -p ~/ros2_ws/src/mapping_localization/maps
+ros2 run nav2_map_server map_saver_cli -f ~/ros2_ws/src/mapping_localization/maps/my_map
+```
 
 ---
 
@@ -170,11 +192,12 @@ ros2 topic pub /cmd_vel_nav geometry_msgs/Twist '{linear: {x: 0.1}}' -r 10
 
 | 패키지명 | 역할 | 비고 |
 | :--- | :--- | :--- |
-| **bridge_bringup** | 전체 시스템 통합 실행 (Launch) | Entry Point |
+| **bridge_bringup** | 전체 하드웨어 통합 실행 (Launch) | Base Layer |
 | **udp_raw_bridge** | UDP 패킷 송수신 | Best Effort |
 | **udp_parsers_cpp** | 바이너리 데이터 파싱 | Optimized C++ |
 | **sensor_bringup** | LiDAR 정규화 및 TF 관리 | Scan Normalizer |
 | **state_estimator** | Odometry 적분 및 **EKF 센서 퓨전** | Robot Localization |
+| **mapping_localization** | **SLAM 및 지도 작성** | SLAM Toolbox |
 | **safety_bringup** | 속도 평활화 및 충돌 방지 | Nav2 Based |
 
 ### 7-2. QoS 정책
@@ -188,7 +211,7 @@ ros2 topic pub /cmd_vel_nav geometry_msgs/Twist '{linear: {x: 0.1}}' -r 10
 
 ```text
 [Simulator] 
-    │ (UDP)
+    │ (UDP 7802/8202...)
     ▼
 [udp_raw_bridge] 
     │ (Topic: *_raw)
@@ -196,15 +219,19 @@ ros2 topic pub /cmd_vel_nav geometry_msgs/Twist '{linear: {x: 0.1}}' -r 10
 [udp_parsers_cpp] 
     │ (Topic: scan_raw, ego_status, imu_raw)
     ▼
-[sensor_bringup] / [state_estimator]
-    │ (Wheel Odom + IMU -> EKF Fusion)
-    │ (Topic: scan, odom)
+[sensor_bringup] + [state_estimator]
+    │ (Processing: LiDAR Norm + EKF Fusion)
+    │ (Topic: /scan, /odom, /tf)
     ▼
-[safety_bringup] (TwistMux -> Smoother -> CollisionMonitor)
-    │ (Topic: cmd_vel)
-    ▼
-[udp_tx_bridge] 
-    │ (UDP)
-    ▼
-[Simulator]
+    +-------------------------------------------------------+
+    │                                                       │
+[mapping_localization] (New!)                    [safety_bringup]
+(SLAM Toolbox)                                   (Nav2 / Teleop)
+    │ (Sub: /scan, /tf)                              │ (Sub: /scan, /cmd_vel_src)
+    │ (Pub: /map)                                    │ (Pub: /cmd_vel)
+    ▼                                                ▼
+[Map Server / Saver]                             [udp_tx_bridge] 
+(Save to .pgm/.yaml)                                 │ (UDP 7601)
+                                                     ▼
+                                            [Simulator]
 ```

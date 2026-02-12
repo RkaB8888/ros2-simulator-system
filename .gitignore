@@ -53,3 +53,4 @@ rosbag2*/
 
 # 2. maps 폴더 안에 있는 모든 파일 무시
 maps/*
+!maps/.gitkeep
